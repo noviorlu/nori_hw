@@ -1,4 +1,5 @@
 #include <nori/octTreeAccel.h>
+#include <Eigen/Geometry>
 #include <algorithm>
 #include <queue>
 #include <chrono>
@@ -13,10 +14,11 @@ OctTreeNode* OctTreeNode::build(const BoundingBox3f& bbox, std::vector<Element*>
     if(elements.size() == 0) return nullptr;
     OctTreeNode* node = new OctTreeNode(bbox);
     OctTreeNode::m_level = OctTreeNode::m_level < depth ? depth : OctTreeNode::m_level;
-    if (depth >= MAX_DEPTH || elements.size() <= MAX_WIDTH)
+    if (elements.size() <= MAX_WIDTH)
     {
-		node->m_elements = elements;
-        OctTreeNode::m_width = OctTreeNode::m_width < elements.size() ? elements.size() : OctTreeNode::m_width;
+        for (int i = 0; i < elements.size(); ++i) {
+            node->m_elements[i] = elements[i];
+        }
         OctTreeNode::m_leaf++;
 		return node;
 	}
@@ -24,7 +26,7 @@ OctTreeNode* OctTreeNode::build(const BoundingBox3f& bbox, std::vector<Element*>
     // construct 8 children's bbox & elementList
     BoundingBox3f childrenBBox[8];
     std::vector<Element*> childrenElements[8];
-
+    std::vector<Element*> parentElements;
 
     Vector3f release = bbox.getExtents() * RELASE_CONST;
     Vector3f center = bbox.getCenter();
@@ -54,21 +56,30 @@ OctTreeNode* OctTreeNode::build(const BoundingBox3f& bbox, std::vector<Element*>
         for (int i = 0; i < 8; i++) {
             if (element->inBBox(childrenBBox[i])) {
                 childrenElements[i].push_back(element);
-                
                 poped = true;
-                break;
             }
 		}
-        if (!poped) {
-			node->m_elements.push_back(element);
+        if (!poped) parentElements.push_back(element);
+	}
+
+    int crossBBox = (parentElements.size() > MAX_WIDTH) ? MAX_WIDTH : parentElements.size();
+    OctTreeNode::m_crossBBoxTriCount += crossBBox;
+    for (int i = 0; i < crossBBox; i++) {
+        node->m_elements[i] = parentElements[i];
+    }
+
+    for(int i = MAX_WIDTH; i < parentElements.size(); i++){
+		for (int j = 0; j < 8; j++) {
+			if(parentElements[i]->m_bbox.overlaps(childrenBBox[j])){
+				childrenElements[j].push_back(parentElements[i]);
+			}
 		}
 	}
+
     for (int i = 0; i < 8; i++) {
-        if (childrenElements[i].size() == 0) node->m_children[i] = nullptr;
-        else node->m_children[i] = build(childrenBBox[i], childrenElements[i], depth+1);
+        if(childrenElements[i].size() == 0) continue;
+        node->m_children[i] = build(childrenBBox[i], childrenElements[i], depth+1);
     }
-    OctTreeNode::m_width = m_width < node->m_elements.size() ? node->m_elements.size() : m_width;
-    m_crossBBoxTriCount += node->m_elements.size();
     return node;
 }
 
@@ -86,14 +97,13 @@ Element* OctTreeNode::rayIntersect(Ray3f& ray, Intersection& its) const
         curNode = pq.top().second;
         pq.pop();
 
-        bool isLeafHit = false;
-        for (int i = 0; i < curNode->m_elements.size(); i++) {
+
+        for (int i = 0; i < MAX_WIDTH; i++) {
+            if (curNode->m_elements[i] == nullptr) break;
             if (curNode->m_elements[i]->rayIntersect(ray, its)) {
                 curHitElement = curNode->m_elements[i];
-                isLeafHit = true;
             }
         }
-        //if (isLeafHit) { while (!pq.empty()) pq.pop(); };
 
         for (int i = 0; i < 8; i++) {
             auto child = curNode->m_children[i];
@@ -104,6 +114,7 @@ Element* OctTreeNode::rayIntersect(Ray3f& ray, Intersection& its) const
 
 	return curHitElement;
 }
+
 
 void OctTreeAccel::build()
 {
@@ -117,15 +128,22 @@ void OctTreeAccel::build()
     for (int i = 0; i < size; i++) {
         elements.push_back(new Triangle(m_mesh, i));
     }
+
+    std::sort(elements.begin(), elements.end(), [](const Element* a, const Element* b) {
+        return a->surfaceArea() < b->surfaceArea();
+    });
+
 	m_root = OctTreeNode::build(m_bbox, elements, 0);
+
+    //m_root->print(0);
+    //OctTreeNode::validate(m_root, size);
+    
     auto end = high_resolution_clock::now();
     std::cout << "OctTree build time:" << duration_cast<milliseconds>(end - start).count() << "ms\n";
     std::cout << "OctTree Depth: " << OctTreeNode::m_level << std::endl;
     std::cout << "Width: " << OctTreeNode::m_width << std::endl;
     std::cout << "Leaf: " << OctTreeNode::m_leaf << std::endl;
     std::cout << "crossBBoxTriCount: " << OctTreeNode::m_crossBBoxTriCount << std::endl;
-    //m_root->print(0);
-    //OctTreeNode::validate(m_root, size);
 
     //exit(0);
 }
@@ -135,37 +153,15 @@ bool OctTreeAccel::rayIntersect(const Ray3f& ray_, Intersection& its, bool shado
     bool foundIntersection = false;  // Was an intersection found so far?
     uint32_t f = (uint32_t)-1;      // Triangle index of the closest intersection
 
-    Ray3f ray(ray_); /// Make a copy of the ray (we will need to update its '.maxt' value)
+    Ray3f ray(ray_);
 
-    /* Brute force search through all triangles */
-    //for (uint32_t idx = 0; idx < m_mesh->getTriangleCount(); ++idx) {
-    //    float u, v, t;
-    //    if (m_mesh->rayIntersect(idx, ray, u, v, t)) {
-    //        /* An intersection was found! Can terminate
-    //           immediately if this is a shadow ray query */
-    //        if (shadowRay)
-    //            return true;
-    //        ray.maxt = its.t = t;
-    //        its.uv = Point2f(u, v);
-    //        its.mesh = m_mesh;
-    //        f = idx;
-    //        foundIntersection = true;
-    //    }
-    //}
     Element* element = m_root->rayIntersect(ray, its);
     if (element != nullptr) {
         foundIntersection = true;
-        //f = ((Triangle*)element)->idx;
     }
 
     if (foundIntersection) {
         Triangle* triangle = (Triangle*)element;
-        /* At this point, we now know that there is an intersection,
-           and we know the triangle index of the closest such intersection.
-
-           The following computes a number of additional properties which
-           characterize the intersection (normals, texture coordinates, etc..)
-        */
 
         /* Find the barycentric coordinates */
         Vector3f bary;
@@ -179,10 +175,7 @@ bool OctTreeAccel::rayIntersect(const Ray3f& ray_, Intersection& its, bool shado
         const MatrixXu& F = mesh->getIndices();
 
         /* Vertex indices of the triangle */
-        //uint32_t idx0 = F(0, f), idx1 = F(1, f), idx2 = F(2, f);
-        //Point3f p0 = V.col(idx0), p1 = V.col(idx1), p2 = V.col(idx2);
         uint32_t idx0 = triangle->m_i0, idx1 = triangle->m_i1, idx2 = triangle->m_i2;
-        //Point3f p0 = triangle->m_p0, p1 = triangle->m_p1, p2 = triangle->m_p2;
         Point3f p0 = V.col(idx0), p1 = V.col(idx1), p2 = V.col(idx2);
 
         /* Compute the intersection positon accurately

@@ -22,6 +22,7 @@
 #include <nori/sampler.h>
 #include <nori/camera.h>
 #include <nori/emitter.h>
+#include <nori/octTreeAccel.h>
 
 NORI_NAMESPACE_BEGIN
 
