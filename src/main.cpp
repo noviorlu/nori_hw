@@ -65,6 +65,8 @@ static void renderBlock(const Scene *scene, Sampler *sampler, ImageBlock &block)
             }
         }
     }
+
+    //std::cout << "Finsihed render One Block" << std::endl;
 }
 
 static void render(Scene *scene, const std::string &filename) {

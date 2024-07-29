@@ -82,6 +82,8 @@ public:
     /// Return the total number of triangles in this shape
     uint32_t getTriangleCount() const { return (uint32_t) m_F.cols(); }
 
+    void getTriangle(int index, Point3f &v0, Point3f& v1, Point3f& v2) const;
+
     /// Return the total number of vertices in this shape
     uint32_t getVertexCount() const { return (uint32_t) m_V.cols(); }
 
