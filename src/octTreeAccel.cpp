@@ -155,10 +155,11 @@ bool OctTreeAccel::rayIntersect(const Ray3f& ray_, Intersection& its, bool shado
     Element* element = m_root->rayIntersect(ray, its);
     if (element != nullptr) {
         foundIntersection = true;
-        f = ((Triangle*)element)->idx;
+        //f = ((Triangle*)element)->idx;
     }
 
     if (foundIntersection) {
+        Triangle* triangle = (Triangle*)element;
         /* At this point, we now know that there is an intersection,
            and we know the triangle index of the closest such intersection.
 
@@ -178,8 +179,10 @@ bool OctTreeAccel::rayIntersect(const Ray3f& ray_, Intersection& its, bool shado
         const MatrixXu& F = mesh->getIndices();
 
         /* Vertex indices of the triangle */
-        uint32_t idx0 = F(0, f), idx1 = F(1, f), idx2 = F(2, f);
-
+        //uint32_t idx0 = F(0, f), idx1 = F(1, f), idx2 = F(2, f);
+        //Point3f p0 = V.col(idx0), p1 = V.col(idx1), p2 = V.col(idx2);
+        uint32_t idx0 = triangle->m_i0, idx1 = triangle->m_i1, idx2 = triangle->m_i2;
+        //Point3f p0 = triangle->m_p0, p1 = triangle->m_p1, p2 = triangle->m_p2;
         Point3f p0 = V.col(idx0), p1 = V.col(idx1), p2 = V.col(idx2);
 
         /* Compute the intersection positon accurately

@@ -105,8 +105,8 @@ public:
 };
 
 #define MAX_DEPTH 10
-#define MAX_WIDTH 16
-#define RELASE_CONST 0.0
+#define MAX_WIDTH 4
+#define RELASE_CONST 0.1
 class OctTreeNode{
 public:
     OctTreeNode(const BoundingBox3f& bbox) {
