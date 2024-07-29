@@ -2,10 +2,12 @@
 
 #include <nori/bbox.h>
 #include <nori/mesh.h>
+#include <nori/accel.h>
+
 #include <iostream>
 #include <stack>
+#include <unordered_map>
 NORI_NAMESPACE_BEGIN
-
 class Element{
 public:
     enum ElementType{
@@ -20,30 +22,37 @@ public:
     virtual bool rayIntersect(Ray3f& ray, Intersection& its) const { return false; }
 public:
     ElementType m_type;
-    
 };
 
-class TriangleIndex : public Element{
+class Triangle : public Element{
 public:
-    TriangleIndex(Mesh* mesh, int i) : Element(TRIANGLEIDX){
+    Triangle(Mesh* mesh, int i) : Element(TRIANGLEIDX){
         m_mesh = mesh;
         idx = i;
-        m_mesh->getTriangle(idx, m_vertices[0], m_vertices[1], m_vertices[2]);
+        m_mesh->getTriangleIdx(i, m_i0, m_i1, m_i2);
+        //m_mesh->getTriangle(i, m_p0, m_p1, m_p2);
     }
     
     bool inBBox(const BoundingBox3f& bbox)const override {
-        for (int i = 0; i < 3; i++) {
-            if (!bbox.contains(m_vertices[i])) {
-                return false;
-            }
-        }
-        return true;
+        const auto& V = m_mesh->getVertexPositions();
+        const Point3f p0 = V.col(m_i0), p1 = V.col(m_i1), p2 = V.col(m_i2);
+        if (bbox.contains(p0) && bbox.contains(p1) && bbox.contains(p2)) {
+			return true;
+		}
+        //if (bbox.contains(m_p0) && bbox.contains(m_p1) && bbox.contains(m_p2)) {
+        //    return true;
+        //}
+        return false;
     }
 
     bool rayIntersect(Ray3f& ray, Intersection& its) const override {
         float u, v, t;
+        const auto& V = m_mesh->getVertexPositions();
+        const Point3f p0 = V.col(m_i0), p1 = V.col(m_i1), p2 = V.col(m_i2);
+        
         /* Find vectors for two edges sharing v[0] */
-        Vector3f edge1 = m_vertices[1] - m_vertices[0], edge2 = m_vertices[2] - m_vertices[0];
+        Vector3f edge1 = p1 - p0, edge2 = p2 - p0;
+        //Vector3f edge1 = m_p1 - m_p0, edge2 = m_p2 - m_p0;
 
         /* Begin calculating determinant - also used to calculate U parameter */
         Vector3f pvec = ray.d.cross(edge2);
@@ -56,7 +65,7 @@ public:
         float inv_det = 1.0f / det;
 
         /* Calculate distance from v[0] to ray origin */
-        Vector3f tvec = ray.o - m_vertices[0];
+        Vector3f tvec = ray.o - p0;
 
         /* Calculate U parameter and test bounds */
         u = tvec.dot(pvec) * inv_det;
@@ -84,7 +93,13 @@ public:
     }
 
 public:
-    Point3f m_vertices[3];
+    //Point3f m_p0;
+    //Point3f m_p1;
+    //Point3f m_p2;
+
+    uint32_t m_i0;
+    uint32_t m_i1;
+    uint32_t m_i2;
     Mesh* m_mesh;
     int idx;
 };
@@ -122,7 +137,7 @@ public:
         for (Element* element : m_elements) {
             switch (element->m_type) {
 				case Element::TRIANGLEIDX:
-					std::cout << "; triangle index: " << ((TriangleIndex*)element)->idx;
+					std::cout << "; triangle index: " << ((Triangle*)element)->idx;
 					break;
 				default:
 					break;
@@ -149,7 +164,7 @@ public:
 			m_stack.pop();
             for (Element* element : node->m_elements) {
                 if (element->m_type == Element::TRIANGLEIDX) {
-					int idx = ((TriangleIndex*)element)->idx;
+					int idx = ((Triangle*)element)->idx;
                     if (flags[idx]) {
 						std::cout << "Multiple Existance error: " << idx << std::endl;
                         shouldExit = true;
@@ -183,13 +198,24 @@ public:
     std::vector<Element*> m_elements;
     OctTreeNode* m_children[8];
 
-    int m_level;
+    static int m_level;
+    static int m_leaf;
+    static int m_width;
+    static int m_crossBBoxTriCount;
 };
 
 struct CompareOctTreeNodes {
     bool operator()(const std::pair<float, OctTreeNode*>& a, const std::pair<float, OctTreeNode*>& b) const {
         return a.first > b.first; // Min-heap: smallest distance has highest priority
     }
+};
+
+class OctTreeAccel : public Accel {
+public:
+    void build() override;
+    bool rayIntersect(const Ray3f& ray, Intersection& its, bool shadowRay) const override;
+public:
+    OctTreeNode* m_root;
 };
 
 NORI_NAMESPACE_END

@@ -64,7 +64,7 @@ add_executable(nori
   include/nori/transform.h
   include/nori/vector.h
   include/nori/warp.h
-  include/nori/octtree.h
+  include/nori/octTreeAccel.h
 
   # Source code files
   src/bitmap.cpp
@@ -90,7 +90,7 @@ add_executable(nori
   src/mirror.cpp
   src/dielectric.cpp
   src/normals.cpp
-  src/octtree.cpp
+  src/octTreeAccel.cpp
 )
 
 add_definitions(${NANOGUI_EXTRA_DEFS})

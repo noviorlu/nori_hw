@@ -30,12 +30,6 @@ void Accel::addMesh(Mesh *mesh) {
 
 void Accel::build() {
     /* Nothing to do here for now */
-    std::vector<Element*> triangles;
-    for (uint32_t idx = 0; idx < m_mesh->getTriangleCount(); ++idx) {
-        triangles.push_back(new TriangleIndex(m_mesh, idx));
-	}
-    m_octtree = OctTreeNode::build(m_bbox, triangles, 0);
-    //OctTreeNode::validate(m_octtree, m_mesh->getTriangleCount());
 }
 
 bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) const {
@@ -45,24 +39,19 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
     Ray3f ray(ray_); /// Make a copy of the ray (we will need to update its '.maxt' value)
 
     /* Brute force search through all triangles */
-    //for (uint32_t idx = 0; idx < m_mesh->getTriangleCount(); ++idx) {
-    //    float u, v, t;
-    //    if (m_mesh->rayIntersect(idx, ray, u, v, t)) {
-    //        /* An intersection was found! Can terminate
-    //           immediately if this is a shadow ray query */
-    //        if (shadowRay)
-    //            return true;
-    //        ray.maxt = its.t = t;
-    //        its.uv = Point2f(u, v);
-    //        its.mesh = m_mesh;
-    //        f = idx;
-    //        foundIntersection = true;
-    //    }
-    //}
-    Element* element = m_octtree->rayIntersect(ray, its);
-    if (element != nullptr) {
-        foundIntersection = true;
-        f = ((TriangleIndex*)element)->idx;
+    for (uint32_t idx = 0; idx < m_mesh->getTriangleCount(); ++idx) {
+        float u, v, t;
+        if (m_mesh->rayIntersect(idx, ray, u, v, t)) {
+            /* An intersection was found! Can terminate
+               immediately if this is a shadow ray query */
+            if (shadowRay)
+                return true;
+            ray.maxt = its.t = t;
+            its.uv = Point2f(u, v);
+            its.mesh = m_mesh;
+            f = idx;
+            foundIntersection = true;
+        }
     }
 
     if (foundIntersection) {

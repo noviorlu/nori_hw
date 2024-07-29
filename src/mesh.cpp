@@ -53,6 +53,11 @@ void Mesh::getTriangle(int index, Point3f& v0, Point3f& v1, Point3f& v2) const {
     v0 = m_V.col(i0); v1 = m_V.col(i1); v2 = m_V.col(i2);
 }
 
+void Mesh::getTriangleIdx(int index, uint32_t& i0, uint32_t& i1, uint32_t& i2) const
+{
+    i0 = m_F(0, index); i1 = m_F(1, index); i2 = m_F(2, index);
+}
+
 bool Mesh::rayIntersect(uint32_t index, const Ray3f &ray, float &u, float &v, float &t) const {
     uint32_t i0 = m_F(0, index), i1 = m_F(1, index), i2 = m_F(2, index);
     const Point3f p0 = m_V.col(i0), p1 = m_V.col(i1), p2 = m_V.col(i2);
