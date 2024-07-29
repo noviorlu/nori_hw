@@ -28,13 +28,12 @@ public:
     TriangleIndex(Mesh* mesh, int i) : Element(TRIANGLEIDX){
         m_mesh = mesh;
         idx = i;
+        m_mesh->getTriangle(idx, m_vertices[0], m_vertices[1], m_vertices[2]);
     }
     
     bool inBBox(const BoundingBox3f& bbox)const override {
-        Point3f vertices[3];
-        m_mesh->getTriangle(idx, vertices[0], vertices[1], vertices[2]);
         for (int i = 0; i < 3; i++) {
-            if (!bbox.contains(vertices[i])) {
+            if (!bbox.contains(m_vertices[i])) {
                 return false;
             }
         }
@@ -43,7 +42,39 @@ public:
 
     bool rayIntersect(Ray3f& ray, Intersection& its) const override {
         float u, v, t;
-        bool rayHit = m_mesh->rayIntersect(idx, ray, u, v, t);
+        /* Find vectors for two edges sharing v[0] */
+        Vector3f edge1 = m_vertices[1] - m_vertices[0], edge2 = m_vertices[2] - m_vertices[0];
+
+        /* Begin calculating determinant - also used to calculate U parameter */
+        Vector3f pvec = ray.d.cross(edge2);
+
+        /* If determinant is near zero, ray lies in plane of triangle */
+        float det = edge1.dot(pvec);
+
+        if (det > -1e-8f && det < 1e-8f)
+            return false;
+        float inv_det = 1.0f / det;
+
+        /* Calculate distance from v[0] to ray origin */
+        Vector3f tvec = ray.o - m_vertices[0];
+
+        /* Calculate U parameter and test bounds */
+        u = tvec.dot(pvec) * inv_det;
+        if (u < 0.0 || u > 1.0)
+            return false;
+
+        /* Prepare to test V parameter */
+        Vector3f qvec = tvec.cross(edge1);
+
+        /* Calculate V parameter and test bounds */
+        v = ray.d.dot(qvec) * inv_det;
+        if (v < 0.0 || u + v > 1.0)
+            return false;
+
+        /* Ray intersects triangle -> compute t */
+        t = edge2.dot(qvec) * inv_det;
+
+        bool rayHit = (t >= ray.mint && t <= ray.maxt);
         if (rayHit) {
             ray.maxt = its.t = t;
             its.uv = Point2f(u, v);
@@ -53,6 +84,7 @@ public:
     }
 
 public:
+    Point3f m_vertices[3];
     Mesh* m_mesh;
     int idx;
 };
