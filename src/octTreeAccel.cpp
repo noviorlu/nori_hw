@@ -128,11 +128,6 @@ void OctTreeAccel::build()
     for (int i = 0; i < size; i++) {
         elements.push_back(new Triangle(m_mesh, i));
     }
-
-    std::sort(elements.begin(), elements.end(), [](const Element* a, const Element* b) {
-        return a->surfaceArea() < b->surfaceArea();
-    });
-
 	m_root = OctTreeNode::build(m_bbox, elements, 0);
 
     //m_root->print(0);
