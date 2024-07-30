@@ -6,9 +6,9 @@
 NORI_NAMESPACE_BEGIN
 
 int OctTreeNode::m_level = 0;
-int OctTreeNode::m_leaf = 0;
-int OctTreeNode::m_width = 0;
-int OctTreeNode::m_crossBBoxTriCount = 0;
+int OctTreeNode::m_leafCount = 0;
+int OctTreeNode::m_nodeCount = 0;
+int OctTreeNode::m_elementCount[MAX_WIDTH+1] = { 0 };
 OctTreeNode* OctTreeNode::build(const BoundingBox3f& bbox, std::vector<Element*>& elements, int depth)
 {
     if(elements.size() == 0) return nullptr;
@@ -19,7 +19,8 @@ OctTreeNode* OctTreeNode::build(const BoundingBox3f& bbox, std::vector<Element*>
         for (int i = 0; i < elements.size(); ++i) {
             node->m_elements[i] = elements[i];
         }
-        OctTreeNode::m_leaf++;
+        OctTreeNode::m_leafCount++;
+        OctTreeNode::m_elementCount[elements.size()]++;
 		return node;
 	}
 
@@ -63,7 +64,6 @@ OctTreeNode* OctTreeNode::build(const BoundingBox3f& bbox, std::vector<Element*>
 	}
 
     int crossBBox = (parentElements.size() > MAX_WIDTH) ? MAX_WIDTH : parentElements.size();
-    OctTreeNode::m_crossBBoxTriCount += crossBBox;
     for (int i = 0; i < crossBBox; i++) {
         node->m_elements[i] = parentElements[i];
     }
@@ -80,6 +80,8 @@ OctTreeNode* OctTreeNode::build(const BoundingBox3f& bbox, std::vector<Element*>
         if(childrenElements[i].size() == 0) continue;
         node->m_children[i] = build(childrenBBox[i], childrenElements[i], depth+1);
     }
+
+    OctTreeNode::m_elementCount[crossBBox]++;
     return node;
 }
 
@@ -136,17 +138,18 @@ void OctTreeAccel::build()
     auto end = high_resolution_clock::now();
     std::cout << "OctTree build time:" << duration_cast<milliseconds>(end - start).count() << "ms\n";
     std::cout << "OctTree Depth: " << OctTreeNode::m_level << std::endl;
-    std::cout << "Width: " << OctTreeNode::m_width << std::endl;
-    std::cout << "Leaf: " << OctTreeNode::m_leaf << std::endl;
-    std::cout << "crossBBoxTriCount: " << OctTreeNode::m_crossBBoxTriCount << std::endl;
-
+    std::cout << "LeafCount: " << OctTreeNode::m_leafCount << std::endl;
+    std::cout << "NodeCount: " << OctTreeNode::m_nodeCount << std::endl;
+    for(int i = 0; i <= MAX_WIDTH; i++){
+		std::cout << "\t\tElementCount[" << i << "]: " << OctTreeNode::m_elementCount[i] << std::endl;
+	}
     //exit(0);
 }
 
 bool OctTreeAccel::rayIntersect(const Ray3f& ray_, Intersection& its, bool shadowRay) const
 {
     bool foundIntersection = false;  // Was an intersection found so far?
-    uint32_t f = (uint32_t)-1;      // Triangle index of the closest intersection
+    uint32_t idx = (uint32_t)-1;      // Triangle index of the closest intersection
 
     Ray3f ray(ray_);
 
@@ -157,7 +160,7 @@ bool OctTreeAccel::rayIntersect(const Ray3f& ray_, Intersection& its, bool shado
 
     if (foundIntersection) {
         Triangle* triangle = (Triangle*)element;
-
+        idx = triangle->idx;
         /* Find the barycentric coordinates */
         Vector3f bary;
         bary << 1 - its.uv.sum(), its.uv;
@@ -170,8 +173,8 @@ bool OctTreeAccel::rayIntersect(const Ray3f& ray_, Intersection& its, bool shado
         const MatrixXu& F = mesh->getIndices();
 
         /* Vertex indices of the triangle */
-        uint32_t idx0 = triangle->m_i0, idx1 = triangle->m_i1, idx2 = triangle->m_i2;
-        Point3f p0 = V.col(idx0), p1 = V.col(idx1), p2 = V.col(idx2);
+        uint32_t i0 = F(0, idx), i1 = F(1, idx), i2 = F(2, idx);
+        Point3f p0 = V.col(i0), p1 = V.col(i1), p2 = V.col(i2);
 
         /* Compute the intersection positon accurately
            using barycentric coordinates */
@@ -179,9 +182,9 @@ bool OctTreeAccel::rayIntersect(const Ray3f& ray_, Intersection& its, bool shado
 
         /* Compute proper texture coordinates if provided by the mesh */
         if (UV.size() > 0)
-            its.uv = bary.x() * UV.col(idx0) +
-            bary.y() * UV.col(idx1) +
-            bary.z() * UV.col(idx2);
+            its.uv = bary.x() * UV.col(i0) +
+            bary.y() * UV.col(i1) +
+            bary.z() * UV.col(i2);
 
         /* Compute the geometry frame */
         its.geoFrame = Frame((p1 - p0).cross(p2 - p0).normalized());
@@ -194,9 +197,9 @@ bool OctTreeAccel::rayIntersect(const Ray3f& ray_, Intersection& its, bool shado
                use anisotropic BRDFs, which need tangent continuity */
 
             its.shFrame = Frame(
-                (bary.x() * N.col(idx0) +
-                    bary.y() * N.col(idx1) +
-                    bary.z() * N.col(idx2)).normalized());
+                (bary.x() * N.col(i0) +
+                    bary.y() * N.col(i1) +
+                    bary.z() * N.col(i2)).normalized());
         }
         else {
             its.shFrame = its.geoFrame;

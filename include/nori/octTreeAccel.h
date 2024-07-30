@@ -31,20 +31,17 @@ public:
     Triangle(Mesh* mesh, int i) : Element(TRIANGLE){
         m_mesh = mesh;
         idx = i;
-        m_mesh->getTriangleIdx(i, m_i0, m_i1, m_i2);
+        //m_mesh->getTriangleIdx(i, m_i0, m_i1, m_i2);
         m_bbox = m_mesh->getBoundingBox(i);
-    }
-    
-    float surfaceArea() const override {
-        auto m_V = m_mesh->getVertexPositions();
-        const Point3f p0 = m_V.col(m_i0), p1 = m_V.col(m_i1), p2 = m_V.col(m_i2);
-
-        return 0.5f * Vector3f((p1 - p0).cross(p2 - p0)).norm();
     }
 
     bool inBBox(const BoundingBox3f& bbox)const override {
+        const auto& F = m_mesh->getIndices();
         const auto& V = m_mesh->getVertexPositions();
-        const Point3f p0 = V.col(m_i0), p1 = V.col(m_i1), p2 = V.col(m_i2);
+        
+        uint32_t i0 = F(0, idx), i1 = F(1, idx), i2 = F(2, idx);
+        Point3f p0 = V.col(i0), p1 = V.col(i1), p2 = V.col(i2);
+        
         if (bbox.contains(p0) && bbox.contains(p1) && bbox.contains(p2)) {
 			return true;
 		}
@@ -58,9 +55,11 @@ public:
 		}
 
         float u, v, t;
+        const auto& F = m_mesh->getIndices();
         const auto& V = m_mesh->getVertexPositions();
-        const Point3f p0 = V.col(m_i0), p1 = V.col(m_i1), p2 = V.col(m_i2);
-        
+
+        uint32_t i0 = F(0, idx), i1 = F(1, idx), i2 = F(2, idx);
+        Point3f p0 = V.col(i0), p1 = V.col(i1), p2 = V.col(i2);
         /* Find vectors for two edges sharing v[0] */
         Vector3f edge1 = p1 - p0, edge2 = p2 - p0;
 
@@ -103,20 +102,21 @@ public:
     }
 
 public:
-    uint32_t m_i0;
-    uint32_t m_i1;
-    uint32_t m_i2;
+    //uint32_t m_i0;
+    //uint32_t m_i1;
+    //uint32_t m_i2;
     Mesh* m_mesh;
     int idx;
 };
 
 #define MAX_DEPTH 12
-#define MAX_WIDTH 8
+#define MAX_WIDTH 4
 #define RELASE_CONST 0.0
 class OctTreeNode : Element{
 public:
     OctTreeNode(const BoundingBox3f& bbox) : Element(OCTTREENODE){
-		m_bbox = bbox;
+        OctTreeNode::m_nodeCount++;
+        m_bbox = bbox;
         for (int i = 0; i < MAX_WIDTH; i++) {
             m_elements[i] = nullptr;
         }
@@ -211,9 +211,9 @@ public:
     OctTreeNode* m_children[8];
 
     static int m_level;
-    static int m_leaf;
-    static int m_width;
-    static int m_crossBBoxTriCount;
+    static int m_nodeCount;
+    static int m_leafCount;
+    static int m_elementCount[MAX_WIDTH+1];
 };
 
 struct CompareOctTreeNodes {
