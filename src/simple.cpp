@@ -21,7 +21,10 @@ public:
 
         Point3f x = its.p, p = m_lightPos;
         Vector3f l = (p - x).normalized();
-        if(scene->rayIntersect(Ray3f(x + 0.001 * l, l))) return Color3f(0.0f);
+        
+        Ray3f lightRay(x, l);
+        lightRay.mint = 0.001;
+        if( scene->rayIntersect(lightRay) ) return Color3f(0.0f);
         
         float r2 = (p - x).squaredNorm();
         Normal3f n = its.shFrame.n.cwiseAbs();
