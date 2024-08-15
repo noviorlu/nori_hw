@@ -16,19 +16,23 @@ public:
     }
 
     Color3f Li(const Scene *scene, Sampler *sampler, const Ray3f &ray) const {
-        /* Find the surface that is visible in the requested direction */
         Intersection its;
-        if (!scene->rayIntersect(ray, its))
-            return Color3f(0.0f);
+        if (!scene->rayIntersect(ray, its)) return Color3f(0.0f);
 
-        /* Return the component-wise absolute
-           value of the shading normal as a color */
+        Point3f x = its.p, p = m_lightPos;
+        Vector3f l = (p - x).normalized();
+        if(scene->rayIntersect(Ray3f(x + 0.001 * l, l))) return Color3f(0.0f);
+        
+        float r2 = (p - x).squaredNorm();
         Normal3f n = its.shFrame.n.cwiseAbs();
-        return Color3f(n.x(), n.y(), n.z());
+        float cosTheta = std::max(0.0f, n.dot(l));
+        float k = 0.25 * INV_PI * INV_PI;
+
+        return m_lightIntensity * k * cosTheta / r2;
     }
 
     std::string toString() const {
-        return "SimpleIntegrator[]";
+        return "SimpleIntegrator[Position: " + m_lightPos.toString() + ", Energy: " + m_lightIntensity.toString() + "]";
     }
 };
 
