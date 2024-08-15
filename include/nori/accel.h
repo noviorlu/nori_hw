@@ -34,7 +34,7 @@ public:
      *
      * This function can only be used before \ref build() is called
      */
-    void addMesh(Mesh *mesh);
+    virtual void addMesh(Mesh *mesh);
 
     /// Build the acceleration data structure (currently a no-op)
     virtual void build();

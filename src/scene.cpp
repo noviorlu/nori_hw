@@ -23,12 +23,14 @@
 #include <nori/camera.h>
 #include <nori/emitter.h>
 #include <nori/octTreeAccel.h>
+#include <nori/bvhAccel.h>
 
 NORI_NAMESPACE_BEGIN
 
 Scene::Scene(const PropertyList &) {
     //m_accel = new Accel();
-    m_accel = new OctTreeAccel();
+    //m_accel = new OctTreeAccel();
+    m_accel = new BVHAccel();
 }
 
 Scene::~Scene() {
