@@ -52,6 +52,7 @@ add_executable(nori
   include/nori/frame.h
   include/nori/integrator.h
   include/nori/emitter.h
+  include/nori/arealight.h
   include/nori/mesh.h
   include/nori/object.h
   include/nori/parser.h
@@ -93,6 +94,7 @@ add_executable(nori
   src/normals.cpp
   src/simple.cpp
   src/ao.cpp
+  src/whitted.cpp
   src/octTreeAccel.cpp
   src/bvhAccel.cpp
 )

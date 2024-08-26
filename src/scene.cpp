@@ -54,6 +54,20 @@ void Scene::activate() {
             NoriObjectFactory::createInstance("independent", PropertyList()));
     }
 
+    int lightCount = m_lights.size();
+
+    m_dpdf.clear();
+    /* If emitter assigned, init sampler */
+    m_dpdf.reserve(lightCount);
+    EmitterQueryRecord rec;
+    for (int i = 0; i < lightCount; i++) {
+        m_lights[i]->preprocess();
+        m_dpdf.append(1 / m_lights[i]->pdf(rec));
+    }
+    m_dpdf.normalize();
+
+    m_dpdfInitialized = true;
+
     cout << endl;
     cout << "Configuration: " << toString() << endl;
     cout << endl;
@@ -69,9 +83,7 @@ void Scene::addChild(NoriObject *obj) {
             break;
         
         case EEmitter: {
-                //Emitter *emitter = static_cast<Emitter *>(obj);
-                /* TBD */
-                throw NoriException("Scene::addChild(): You need to implement this for emitters");
+                m_lights.push_back(static_cast<Emitter *>(obj));
             }
             break;
 
@@ -97,6 +109,12 @@ void Scene::addChild(NoriObject *obj) {
             throw NoriException("Scene::addChild(<%s>) is not supported!",
                 classTypeName(obj->getClassType()));
     }
+}
+
+Emitter* Scene::SampleLight(Sampler* sampler) const
+{
+    int idx = m_dpdf.sample(sampler->next1D());
+    return m_lights[idx];
 }
 
 std::string Scene::toString() const {

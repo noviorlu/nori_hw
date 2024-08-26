@@ -33,11 +33,23 @@ Mesh::~Mesh() {
 }
 
 void Mesh::activate() {
+    if (isActivate) return;
+
     if (!m_bsdf) {
         /* If no material was assigned, instantiate a diffuse BRDF */
         m_bsdf = static_cast<BSDF *>(
             NoriObjectFactory::createInstance("diffuse", PropertyList()));
     }
+    int triCount = this->getTriangleCount();
+    if (m_emitter && triCount) {
+		/* If emitter assigned, init sampler */
+        m_dpdf.reserve(triCount);
+        for (int i = 0; i < triCount; i++)
+            m_dpdf.append(this->surfaceArea(i));
+        m_dpdf.normalize();
+	}
+
+    isActivate = true;
 }
 
 float Mesh::surfaceArea(uint32_t index) const {
@@ -111,6 +123,54 @@ Point3f Mesh::getCentroid(uint32_t index) const {
          m_V.col(m_F(2, index)));
 }
 
+/// <summary>
+/// Uniformly sample on the mesh sufrace
+/// </summary>
+/// <param name="rec"> Result Recorder </param>
+/// <param name="sampler"> sampler it's using </param>
+/// <returns></returns>
+Color3f Mesh::sample(EmitterQueryRecord& queryRec, Sampler* sampler) const
+{
+    float triSample = sampler->next1D();
+    Point2f bycentricSample = sampler->next2D();
+
+    float tmp = std::sqrt(bycentricSample.x());
+    float alpha = 1 - tmp;
+    float beta = tmp * bycentricSample.y();
+    float gamma = 1 - alpha - beta;
+
+    int sampleIdx = m_dpdf.sample(triSample);
+
+    uint32_t i0, i1, i2;
+    getTriangleIdx(sampleIdx, i0, i1, i2);
+    Point3f v0 = m_V.col(i0), v1 = m_V.col(i1), v2 = m_V.col(i2);
+
+    queryRec.p = alpha * v0 + beta * v1 + gamma * v2;
+    
+    // solve normal, if exist barycentric, if not exist counterclockwise
+    if(m_N.cols() > 0)
+	{
+        Point3f n0 = m_N.col(i0), n1 = m_N.col(i1), n2 = m_N.col(i2);
+		queryRec.n = alpha * n0 + beta * n1 + gamma * n2;
+	}
+	else
+	{
+        queryRec.n = (v1 - v0).cross(v2 - v0).normalized();
+	}
+
+    return Color3f(0.0f);
+}
+
+float Mesh::pdf(EmitterQueryRecord& rec) const
+{
+    return m_dpdf.getNormalization();
+}
+
+float Mesh::invpdf(EmitterQueryRecord& rec) const
+{
+    return m_dpdf.getSum();
+}
+
 void Mesh::addChild(NoriObject *obj) {
     switch (obj->getClassType()) {
         case EBSDF:
@@ -126,6 +186,7 @@ void Mesh::addChild(NoriObject *obj) {
                     throw NoriException(
                         "Mesh: tried to register multiple Emitter instances!");
                 m_emitter = emitter;
+                emitter->m_sampler = (IEmitterSampler*)this;
             }
             break;
 

@@ -17,22 +17,28 @@
 */
 
 #pragma once
-
-#include <nori/object.h>
-
+#include <nori/emittersampler.h>
 NORI_NAMESPACE_BEGIN
-
 /**
  * \brief Superclass of all emitters
  */
 class Emitter : public NoriObject {
 public:
-
+    IEmitterSampler* m_sampler;
+public:
     /**
      * \brief Return the type of object (i.e. Mesh/Emitter/etc.) 
      * provided by this instance
      * */
     EClassType getClassType() const { return EEmitter; }
+
+    void preprocess() { if(m_sampler) m_sampler->preprocess(); }
+
+    virtual Color3f sample(EmitterQueryRecord& rec, Sampler* sampler) const = 0;
+
+    virtual Color3f eval(const EmitterQueryRecord& rec) const = 0;
+
+    virtual float pdf(const EmitterQueryRecord& rec) const { return 1.0f; }
 };
 
 NORI_NAMESPACE_END

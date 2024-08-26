@@ -21,6 +21,8 @@
 #include <nori/object.h>
 #include <nori/frame.h>
 #include <nori/bbox.h>
+#include <nori/dpdf.h>
+#include <nori/emittersampler.h>
 
 NORI_NAMESPACE_BEGIN
 
@@ -71,7 +73,7 @@ struct Intersection {
  * the specifics of how to create its contents (e.g. by loading from an
  * external file)
  */
-class Mesh : public NoriObject {
+class Mesh : public NoriObject, public IEmitterSampler {
 public:
     /// Release all memory
     virtual ~Mesh();
@@ -151,6 +153,12 @@ public:
     /// Return a pointer to the BSDF associated with this mesh
     const BSDF *getBSDF() const { return m_bsdf; }
 
+    /// Sample a point on the surface of the mesh
+    void preprocess() override { activate(); }
+    Color3f sample(EmitterQueryRecord& rec, Sampler* sampler) const override;
+    float pdf(EmitterQueryRecord& rec) const override;
+    float invpdf(EmitterQueryRecord& rec) const override;
+
     /// Register a child object (e.g. a BSDF) with the mesh
     virtual void addChild(NoriObject *child);
 
@@ -171,6 +179,7 @@ protected:
     Mesh();
 
 protected:
+    bool isActivate = false;
     std::string m_name;                  ///< Identifying name
     MatrixXf      m_V;                   ///< Vertex positions
     MatrixXf      m_N;                   ///< Vertex normals
@@ -179,6 +188,7 @@ protected:
     BSDF         *m_bsdf = nullptr;      ///< BSDF of the surface
     Emitter    *m_emitter = nullptr;     ///< Associated emitter, if any
     BoundingBox3f m_bbox;                ///< Bounding box of the mesh
+    DiscretePDF m_dpdf;                  ///< Discrete PDF for sampling triangles
 };
 
 NORI_NAMESPACE_END

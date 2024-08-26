@@ -19,7 +19,8 @@
 #pragma once
 
 #include <nori/accel.h>
-
+#include <nori/dpdf.h>
+#include <nori/common.h>
 NORI_NAMESPACE_BEGIN
 
 /**
@@ -112,6 +113,9 @@ public:
     /// Add a child object to the scene (meshes, integrators etc.)
     void addChild(NoriObject *obj);
 
+    // importance sampling Light
+    Emitter* SampleLight(Sampler* sampler) const;
+
     /// Return a string summary of the scene (for debugging purposes)
     std::string toString() const;
 
@@ -122,6 +126,10 @@ private:
     Sampler *m_sampler = nullptr;
     Camera *m_camera = nullptr;
     Accel *m_accel = nullptr;
+    
+    bool m_dpdfInitialized = false;
+    DiscretePDF m_dpdf;                  ///< Discrete PDF for sampling triangles
+    std::vector<Emitter*> m_lights;      ///< List of all lights in the scene
 };
 
 NORI_NAMESPACE_END

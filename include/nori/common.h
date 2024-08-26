@@ -125,6 +125,7 @@ class ImageBlock;
 class Integrator;
 class KDTree;
 class Emitter;
+class AreaLight;
 struct EmitterQueryRecord;
 class Mesh;
 class NoriObject;
