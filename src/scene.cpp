@@ -62,11 +62,9 @@ void Scene::activate() {
     EmitterQueryRecord rec;
     for (int i = 0; i < lightCount; i++) {
         m_lights[i]->preprocess();
-        m_dpdf.append(1 / m_lights[i]->pdf(rec));
+        m_dpdf.append(m_lights[i]->sum(rec));
     }
     m_dpdf.normalize();
-
-    m_dpdfInitialized = true;
 
     cout << endl;
     cout << "Configuration: " << toString() << endl;
@@ -79,6 +77,8 @@ void Scene::addChild(NoriObject *obj) {
                 Mesh *mesh = static_cast<Mesh *>(obj);
                 m_accel->addMesh(mesh);
                 m_meshes.push_back(mesh);
+                if (mesh->isEmitter())
+                    m_lights.push_back(mesh->getEmitter());
             }
             break;
         
@@ -111,9 +111,12 @@ void Scene::addChild(NoriObject *obj) {
     }
 }
 
-Emitter* Scene::SampleLight(Sampler* sampler) const
+Emitter* Scene::SampleLight(EmitterQueryRecord& rec, Sampler* sampler) const
 {
-    int idx = m_dpdf.sample(sampler->next1D());
+    float pdflight;
+    int idx = m_dpdf.sample(sampler->next1D(), pdflight);
+    rec.invpdf /= pdflight;
+
     return m_lights[idx];
 }
 

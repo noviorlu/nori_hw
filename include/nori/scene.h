@@ -114,7 +114,8 @@ public:
     void addChild(NoriObject *obj);
 
     // importance sampling Light
-    Emitter* SampleLight(Sampler* sampler) const;
+    Emitter* SampleLight(EmitterQueryRecord& rec, Sampler* sampler) const;
+    float getPDF() const{ return m_dpdf.getNormalization(); }
 
     /// Return a string summary of the scene (for debugging purposes)
     std::string toString() const;
@@ -126,8 +127,7 @@ private:
     Sampler *m_sampler = nullptr;
     Camera *m_camera = nullptr;
     Accel *m_accel = nullptr;
-    
-    bool m_dpdfInitialized = false;
+public:
     DiscretePDF m_dpdf;                  ///< Discrete PDF for sampling triangles
     std::vector<Emitter*> m_lights;      ///< List of all lights in the scene
 };

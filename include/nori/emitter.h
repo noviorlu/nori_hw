@@ -39,6 +39,8 @@ public:
     virtual Color3f eval(const EmitterQueryRecord& rec) const = 0;
 
     virtual float pdf(const EmitterQueryRecord& rec) const { return 1.0f; }
+
+    virtual float sum(const EmitterQueryRecord& rec) const { return m_sampler->sum(rec); }
 };
 
 NORI_NAMESPACE_END

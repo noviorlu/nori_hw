@@ -22,7 +22,8 @@ public:
 	}
 
 	Color3f eval(const EmitterQueryRecord& rec) const override {
-		return (rec.n.dot(rec.wi) < 0.0f) ? rec.factor * m_radiance : 0.0f;
+		throw NoriException("AreaLight::pdf: Doesnot Support query eval!");
+		return Color3f(0.0);
 	}
 
 	Color3f sample(EmitterQueryRecord &rec, Sampler* sampler) const override{
@@ -30,25 +31,36 @@ public:
 			cout << "AreaLight::sample: m_sampler is nullptr" << endl;
 			return Color3f(0.0f);
 		}
-
 		m_sampler->sample(rec, sampler);
-		rec.wi = rec.ref - rec.p;
-		float dist = rec.wi.norm();
-		rec.wi.normalize();
-		rec.factor = std::max(0.0f, rec.n.dot(-rec.wi)) / (dist * dist) * m_sampler->invpdf(rec);
+
+		rec.wi = (rec.ref - rec.p);
+		float squareNorm = rec.wi.squaredNorm();
+		float norm = sqrt(squareNorm);
+		rec.wi /= norm;
+
+		float cosTheta = rec.n.dot(rec.wi);
+		float cosThetaRef = rec.refn.dot(-rec.wi);
+		if (cosTheta < 0.0f || cosThetaRef < 0.0f) return Color3f(0.0f);
+
+		rec.factor = cosTheta * cosThetaRef / squareNorm;
 		rec.radiance = m_radiance;
+		rec.pdf = m_sampler->pdf(rec);
 
-		rec.shadowRay = Ray3f(rec.ref, rec.wi);
-		rec.shadowRay.mint = EPSILON;
-		rec.shadowRay.maxt = dist - EPSILON;
+		rec.shadowRay = Ray3f(rec.ref, -rec.wi);
+		rec.shadowRay.mint = EPSILON;   
+		rec.shadowRay.maxt = norm - EPSILON;
 
-		return rec.factor * rec.radiance;
+		return rec.factor * rec.invpdf * rec.radiance;
 	}
 	
-	// transform pdf from solid angle to area
 	float pdf(const EmitterQueryRecord& rec) const override {
-		return m_sampler.pdf();
+		throw NoriException("AreaLight::pdf: Doesnot Support query pdf!");
+		return 0;
+	}
+
+	std::string toString() const override {
+		return "AreaLight with radiance " + m_radiance.toString();
 	}
 };
-NORI_REGISTER_CLASS(AreaLight, "area")
+NORI_REGISTER_CLASS(AreaLight, "area");
 NORI_NAMESPACE_END

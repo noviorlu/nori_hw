@@ -129,7 +129,7 @@ Point3f Mesh::getCentroid(uint32_t index) const {
 /// <param name="rec"> Result Recorder </param>
 /// <param name="sampler"> sampler it's using </param>
 /// <returns></returns>
-Color3f Mesh::sample(EmitterQueryRecord& queryRec, Sampler* sampler) const
+Color3f Mesh::sample(EmitterQueryRecord& rec, Sampler* sampler) const
 {
     float triSample = sampler->next1D();
     Point2f bycentricSample = sampler->next2D();
@@ -139,34 +139,40 @@ Color3f Mesh::sample(EmitterQueryRecord& queryRec, Sampler* sampler) const
     float beta = tmp * bycentricSample.y();
     float gamma = 1 - alpha - beta;
 
-    int sampleIdx = m_dpdf.sample(triSample);
+    float pdftri = 1;
+    int sampleIdx = m_dpdf.sample(triSample, pdftri);
+    rec.invpdf /= pdftri;
 
     uint32_t i0, i1, i2;
     getTriangleIdx(sampleIdx, i0, i1, i2);
     Point3f v0 = m_V.col(i0), v1 = m_V.col(i1), v2 = m_V.col(i2);
 
-    queryRec.p = alpha * v0 + beta * v1 + gamma * v2;
+    rec.p = alpha * v0 + beta * v1 + gamma * v2;
     
+    Vector3f trinorm = (v1 - v0).cross(v2 - v0);
+    rec.invpdf *= 0.5f * trinorm.norm();
+    rec.pdf = 1 / rec.invpdf;
+
     // solve normal, if exist barycentric, if not exist counterclockwise
     if(m_N.cols() > 0)
 	{
         Point3f n0 = m_N.col(i0), n1 = m_N.col(i1), n2 = m_N.col(i2);
-		queryRec.n = alpha * n0 + beta * n1 + gamma * n2;
+		rec.n = alpha * n0 + beta * n1 + gamma * n2;
 	}
 	else
 	{
-        queryRec.n = (v1 - v0).cross(v2 - v0).normalized();
+        rec.n = trinorm.normalized();
 	}
 
-    return Color3f(0.0f);
+    return Color3f(0.0);
 }
 
-float Mesh::pdf(EmitterQueryRecord& rec) const
+float Mesh::pdf(const EmitterQueryRecord& rec) const
 {
     return m_dpdf.getNormalization();
 }
 
-float Mesh::invpdf(EmitterQueryRecord& rec) const
+float Mesh::sum(const EmitterQueryRecord& rec) const
 {
     return m_dpdf.getSum();
 }
