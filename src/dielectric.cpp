@@ -48,22 +48,21 @@ public:
         float cosTheta = Frame::cosTheta(bRec.wi);
         
         float R = fresnel(cosTheta, m_extIOR, m_intIOR);
-        if (sample.x() < R) {
+        if (sample.x() > R) {
             // refraction
             float eta;
+            Vector3f normal(0.0f, 0.0f, 1.0f);
             if (cosTheta > 0.0f)
 				eta = m_extIOR / m_intIOR;
             else {
 				eta = m_intIOR / m_extIOR;
                 cosTheta = -cosTheta;
+                normal = -normal;
 			}
             
             // calculate refraction out direction
             float cosThetat = sqrt(1.0f - eta * eta * (1.0f - cosTheta * cosTheta));
-            bRec.wo = -bRec.wi * eta + Vector3f(0.0f, 0.0f, 1.0f) * (eta * cosTheta - cosThetat);
-        
-            // set value to Tranmittance instead of Reflectance
-            R = 1 - R;
+            bRec.wo = -bRec.wi * eta + normal * (eta * cosTheta - cosThetat);
         }
         else {
             // reflection
@@ -72,7 +71,7 @@ public:
             bRec.wo = Vector3f(-bRec.wi.x(), -bRec.wi.y(), bRec.wi.z());
 		}
 
-        return Color3f(R);
+        return Color3f(1.0f);
     }
 
     std::string toString() const {
