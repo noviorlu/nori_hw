@@ -22,8 +22,7 @@ public:
 	}
 
 	Color3f eval(const EmitterQueryRecord& rec) const override {
-		throw NoriException("AreaLight::pdf: Doesnot Support query eval!");
-		return Color3f(0.0);
+		return m_radiance;
 	}
 
 	Color3f sample(EmitterQueryRecord &rec, Sampler* sampler) const override{
@@ -54,7 +53,6 @@ public:
 	}
 	
 	float pdf(const EmitterQueryRecord& rec) const override {
-		throw NoriException("AreaLight::pdf: Doesnot Support query pdf!");
 		return 0;
 	}
 

@@ -43,7 +43,36 @@ public:
     }
 
     Color3f sample(BSDFQueryRecord &bRec, const Point2f &sample) const {
-        throw NoriException("Unimplemented!");
+        // calc cosineTheta
+        bRec.measure = EDiscrete;
+        float cosTheta = Frame::cosTheta(bRec.wi);
+        
+        float R = fresnel(cosTheta, m_extIOR, m_intIOR);
+        if (sample.x() < R) {
+            // refraction
+            float eta;
+            if (cosTheta > 0.0f)
+				eta = m_extIOR / m_intIOR;
+            else {
+				eta = m_intIOR / m_extIOR;
+                cosTheta = -cosTheta;
+			}
+            
+            // calculate refraction out direction
+            float cosThetat = sqrt(1.0f - eta * eta * (1.0f - cosTheta * cosTheta));
+            bRec.wo = -bRec.wi * eta + Vector3f(0.0f, 0.0f, 1.0f) * (eta * cosTheta - cosThetat);
+        
+            // set value to Tranmittance instead of Reflectance
+            R = 1 - R;
+        }
+        else {
+            // reflection
+            /* Relative index of refraction: no change */
+            bRec.eta = 1.0f;
+            bRec.wo = Vector3f(-bRec.wi.x(), -bRec.wi.y(), bRec.wi.z());
+		}
+
+        return Color3f(R);
     }
 
     std::string toString() const {

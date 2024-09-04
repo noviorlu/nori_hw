@@ -25,9 +25,19 @@ public:
         if (scene->rayIntersect(rec.shadowRay)) return Le;
 
         BSDFQueryRecord bRec(its.toLocal(-rec.wi), its.toLocal(-ray.d), ESolidAngle);
-        Color3f f = its.mesh->getBSDF()->eval(bRec);
+        const BSDF* bsdf = its.mesh->getBSDF();
+        if (bsdf->isDiffuse()) {
+            Color3f f = bsdf->eval(bRec);
+            return Le + Li * f;
+        }
+        else {
+            Color3f f = bsdf->sample(bRec, sampler->next2D());
 
-        return Le + Li * f;
+            if(f.x() == 0.0f || sampler->next1D() < 0.95) return Le;
+
+            Ray3f newRay = Ray3f(its.p, its.toWorld(bRec.wo));
+            return Le + Li * f * this->Li(scene, sampler, newRay) / 0.95;
+        }
     }
 
     std::string toString() const {
