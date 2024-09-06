@@ -167,16 +167,6 @@ Color3f Mesh::sample(EmitterQueryRecord& rec, Sampler* sampler) const
     return Color3f(0.0);
 }
 
-float Mesh::pdf(const EmitterQueryRecord& rec) const
-{
-    return m_dpdf.getNormalization();
-}
-
-float Mesh::sum(const EmitterQueryRecord& rec) const
-{
-    return m_dpdf.getSum();
-}
-
 void Mesh::addChild(NoriObject *obj) {
     switch (obj->getClassType()) {
         case EBSDF:

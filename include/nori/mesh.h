@@ -156,8 +156,8 @@ public:
     /// Sample a point on the surface of the mesh
     void preprocess() override { activate(); }
     Color3f sample(EmitterQueryRecord& rec, Sampler* sampler) const override;
-    float pdf(const EmitterQueryRecord& rec) const override;
-    float sum(const EmitterQueryRecord& rec) const override;
+    float pdf(const EmitterQueryRecord& rec) const override { return m_dpdf.getNormalization(); }
+    float sum(const EmitterQueryRecord& rec) const override { return m_dpdf.getSum(); }
 
     /// Register a child object (e.g. a BSDF) with the mesh
     virtual void addChild(NoriObject *child);
