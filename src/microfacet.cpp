@@ -98,7 +98,7 @@ public:
         // cosine factor from the reflection equation, i.e.
         if (_sample.x() > m_ks) {
             Point2f sample((_sample.x() - m_ks) / (1.f - m_ks), _sample.y());
-			bRec.wo = Warp::squareToCosineHemisphere(_sample);
+			bRec.wo = Warp::squareToCosineHemisphere(sample);
         }
         else {
             Point2f sample(_sample.x() / m_ks, _sample.y());
