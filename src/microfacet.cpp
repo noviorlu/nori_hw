@@ -81,25 +81,22 @@ public:
         return m_kd * INV_PI + m_ks * BeckmannMicrofacet(bRec.wi, bRec.wo);
     }
 
-    float VInvJacobian(const Vector3f& wh, const Vector3f& wo) const {
-		return 4 * std::abs(wh.dot(wo));
-	}
-
     /// Evaluate the sampling density of \ref sample() wrt. solid angles
     float pdf(const BSDFQueryRecord &bRec) const {
         Vector3f wh = (bRec.wi + bRec.wo).normalized();
     	return (1-m_ks) * Warp::squareToCosineHemispherePdf(bRec.wo) 
-            + m_ks * Warp::squareToBeckmannPdf(wh, m_alpha) / VInvJacobian(wh, bRec.wo);
+            + m_ks * Warp::squareToBeckmannPdf(wh, m_alpha) / 4 / std::abs(wh.dot(wo));
     }
 
     /// Sample the BRDF
     Color3f sample(BSDFQueryRecord &bRec, const Point2f &_sample) const {
+        if (Frame::cosTheta(bRec.wi) <= 0) return Color3f(0.0f);
+        
         // Note: Once you have implemented the part that computes the scattered
         // direction, the last part of this function should simply return the
         // BRDF value divided by the solid angle density and multiplied by the
         // cosine factor from the reflection equation, i.e.
-        bRec.measure = ESolidAngle;
-        if (_sample.x() < m_ks) {
+        if (_sample.x() > m_ks) {
             Point2f sample((_sample.x() - m_ks) / (1.f - m_ks), _sample.y());
 			bRec.wo = Warp::squareToCosineHemisphere(_sample);
         }
@@ -108,7 +105,8 @@ public:
 			Vector3f wh = Warp::squareToBeckmann(sample, m_alpha);
 			bRec.wo = 2 * wh.dot(bRec.wi) * wh - bRec.wi;
 		}
-        if (bRec.wo.z() < 0.f) { return Color3f(0.0f); }
+        if (Frame::cosTheta(bRec.wo) < 0.f) { return Color3f(0.0f); }
+
         return eval(bRec) * Frame::cosTheta(bRec.wo) / pdf(bRec);
     }
 
