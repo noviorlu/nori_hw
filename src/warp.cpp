@@ -92,6 +92,9 @@ Vector3f Warp::squareToBeckmann(const Point2f& sample, float alpha) {
     return angleToPoint(theta, phi);
 }
 
+// probability for solid angle instead of single theta
+// p(w_h) = D(w_o)cos(theta_h)
+// detail see https://zhuanlan.zhihu.com/p/719427294 Section 6.1
 float Warp::squareToBeckmannPdf(const Vector3f& m, float alpha) {
     if(m.z() <= 0) return 0;
     float cosTheta = m.z();
@@ -100,5 +103,4 @@ float Warp::squareToBeckmannPdf(const Vector3f& m, float alpha) {
     float cos3theta = cosTheta * cosTheta * cosTheta;
     return INV_PI * exp(-tan2theta / alpha2) / (alpha2 * cos3theta);
 }
-
 NORI_NAMESPACE_END
