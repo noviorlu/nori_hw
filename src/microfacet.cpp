@@ -85,7 +85,7 @@ public:
     float pdf(const BSDFQueryRecord &bRec) const {
         Vector3f wh = (bRec.wi + bRec.wo).normalized();
     	return (1-m_ks) * Warp::squareToCosineHemispherePdf(bRec.wo) 
-            + m_ks * Warp::squareToBeckmannPdf(wh, m_alpha) / 4 / std::abs(wh.dot(wo));
+            + m_ks * Warp::squareToBeckmannPdf(wh, m_alpha) / 4 / std::abs(wh.dot(bRec.wo));
     }
 
     /// Sample the BRDF
