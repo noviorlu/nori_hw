@@ -103,4 +103,18 @@ float Warp::squareToBeckmannPdf(const Vector3f& m, float alpha) {
     float cos3theta = cosTheta * cosTheta * cosTheta;
     return INV_PI * exp(-tan2theta / alpha2) / (alpha2 * cos3theta);
 }
+
+Vector3f Warp::squareToGGX(const Point2f& sample, float alpha) {
+    float phi = 2 * M_PI * sample.y();
+    float theta = acos(sqrt( (1 - sample.x()) / (1 + (alpha * alpha - 1) * sample.x()) ));
+    return angleToPoint(theta, phi);
+}
+
+float Warp::squareToGGXPdf(const Vector3f& m, float alpha) {
+	if(m.z() <= 0) return 0;
+	float cosTheta = m.z();
+    float alpha2 = alpha * alpha;
+    float factor = Frame::cosTheta(m) * Frame::cosTheta(m) * (alpha2 - 1) + 1;
+    return alpha2 * INV_PI / factor / factor * cosTheta;
+}
 NORI_NAMESPACE_END
