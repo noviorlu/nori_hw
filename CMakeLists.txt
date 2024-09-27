@@ -94,6 +94,9 @@ add_executable(nori
   src/simple.cpp
   src/ao.cpp
   src/whitted.cpp
+  src/path_mats.cpp
+  src/path_ems.cpp
+  src/path_mis.cpp
   src/arealight.cpp
   src/octTreeAccel.cpp
   src/bvhAccel.cpp

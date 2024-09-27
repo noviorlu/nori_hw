@@ -5,9 +5,9 @@
 #include <nori/sampler.h>
 NORI_NAMESPACE_BEGIN
 
-class WhittedIntegrator : public Integrator {
+class PathMisIntegrator : public Integrator {
 public:
-    WhittedIntegrator(const PropertyList &props) {
+    PathMisIntegrator(const PropertyList &props) {
         /* No parameters this time */
     }
 
@@ -42,5 +42,5 @@ public:
     }
 };
 
-NORI_REGISTER_CLASS(WhittedIntegrator, "whitted");
+NORI_REGISTER_CLASS(PathMisIntegrator, "path_mis");
 NORI_NAMESPACE_END
