@@ -14,35 +14,34 @@ public:
     Color3f Li(const Scene *scene, Sampler *sampler, const Ray3f &ray) const {
         Color3f Result(0.0f), fr(0.0f), Le(0.0f);
         Color3f beta(1.0f, 1.0f, 1.0f);
-
+        float eta = 1.0f;
         Intersection its;
-        
-        const BSDF* bsdf;
         Ray3f r = ray;
+        const BSDF* bsdf;
 
-        for (int depth = 0; depth < 10; depth++) {
+        for (int depth = 0; depth < 100; depth++) {
             // Path Trace Hit
             if (!scene->rayIntersect(r, its)) break;
             
             // Russian Roulette
             if (depth >= 3) {
-                float q = std::min(0.99f, beta.maxCoeff());
+                float q = std::min(0.99f, beta.maxCoeff() * eta * eta);
                 if (sampler->next1D() > q) break;
                 beta /= q;
             }
 
             // Emitter Hit
-            EmitterQueryRecord rec(its.p, its.shFrame.n);
-            if (its.mesh->isEmitter()) Le = its.mesh->getEmitter()->eval(rec);
-            else Le = Color3f(0.0f);
-
-            Result += beta * Le;
+            if (its.mesh->isEmitter()) {
+                EmitterQueryRecord rec(its.p, its.shFrame.n);
+                Result += beta * its.mesh->getEmitter()->eval(rec);
+                break;
+            }
 
             BSDFQueryRecord bRec(its.toLocal(-r.d));
-            bsdf = its.mesh->getBSDF();
-            fr = bsdf->sample(bRec, sampler->next2D());
+            fr = its.mesh->getBSDF()->sample(bRec, sampler->next2D());
             
-            beta *= fr * Frame::cosTheta(bRec.wo);
+            eta *= bRec.eta;
+            beta *= fr * std::abs(Frame::cosTheta(bRec.wo));
             r = Ray3f(its.p, its.toWorld(bRec.wo));
         }
 
