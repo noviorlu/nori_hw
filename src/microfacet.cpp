@@ -194,8 +194,8 @@ public:
         );
     }
 private:
-    bool isGGX = true;
-    bool isVNDF = true;
+    bool isGGX = false;
+    bool isVNDF = false;
     float m_alpha;
     float m_intIOR, m_extIOR;
     float m_ks;

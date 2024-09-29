@@ -22,7 +22,12 @@ public:
 	}
 
 	Color3f eval(const EmitterQueryRecord& rec) const override {
-		return m_radiance;
+		if (rec.wo.z() > 0) {
+			return getRadiance();
+		}
+		else {
+			return Color3f(0.0f);
+		}
 	}
 
 	Color3f sample(EmitterQueryRecord &rec, Sampler* sampler) const override{
@@ -32,7 +37,7 @@ public:
 		}
 		m_sampler->sample(rec, sampler);
 
-		rec.wi = (rec.ref - rec.p);
+		rec.wi = (rec.refp - rec.p);
 		float squareNorm = rec.wi.squaredNorm();
 		float norm = sqrt(squareNorm);
 		rec.wi /= norm;
@@ -45,7 +50,7 @@ public:
 		rec.radiance = m_radiance;
 		rec.pdf = m_sampler->pdf(rec);
 
-		rec.shadowRay = Ray3f(rec.ref, -rec.wi);
+		rec.shadowRay = Ray3f(rec.refp, -rec.wi);
 		rec.shadowRay.mint = EPSILON;   
 		rec.shadowRay.maxt = norm - EPSILON;
 
