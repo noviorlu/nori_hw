@@ -62,14 +62,17 @@ public:
     float BeckmannMicrofacet(const Vector3f& wi, const Vector3f& wo) const {
 		Vector3f wh = (wi + wo).normalized();
         float f = fresnel(wi.dot(wh), m_extIOR, m_intIOR);
-        float d = Warp::squareToBeckmannPdf(wh, m_alpha) / Frame::cosTheta(wh);
+        float d = BeckmannD(wh);
         float g = BeckmannG1(wi, wh) * BeckmannG1(wo, wh);
 		return f * d * g / (4 * Frame::cosTheta(wi) * Frame::cosTheta(wo));
 	}
 
+    float BeckmannD(const Vector3f& wh) const {
+		return Warp::squareToBeckmannPdf(wh, m_alpha) / Frame::cosTheta(wh);
+	}
+
     float BeckmannDh(const Vector3f& wh) const {
-        return  BeckmannG1(Vector3f(0, 0, 1), wh) * Warp::squareToBeckmannPdf(wh, m_alpha) 
-            * std::max(0.0f, wh.z()) / Frame::cosTheta(wh);
+        return  BeckmannG1(Vector3f(0, 0, 1), wh) / Frame::cosTheta(wh) * BeckmannD(wh) * std::max(0.0f, wh.z());
 	}
 
     float GGXG1(const Vector3f& wv, const Vector3f& wh) const {
@@ -85,14 +88,17 @@ public:
     float GGXMicrofacet(const Vector3f& wi, const Vector3f& wo) const {
         Vector3f wh = (wi + wo).normalized();
         float f = fresnel(wi.dot(wh), m_extIOR, m_intIOR);
-        float d = Warp::squareToGGXPdf(wh, m_alpha) / Frame::cosTheta(wh);
+        float d = GGXD(wh);
         float g = GGXG1(wi, wh) * GGXG1(wo, wh);
         return f * d * g / (4 * Frame::cosTheta(wi) * Frame::cosTheta(wo));
     }
 
+    float GGXD(const Vector3f& wh) const {
+		return Warp::squareToGGXPdf(wh, m_alpha) / Frame::cosTheta(wh);
+	}
+
     float GGXDh(const Vector3f& wh) const {
-        return  GGXG1(Vector3f(0, 0, 1), wh) * Warp::squareToGGXPdf(wh, m_alpha)
-            * std::max(0.0f, wh.z()) / Frame::cosTheta(wh);
+        return GGXG1(Vector3f(0, 0, 1), wh) / Frame::cosTheta(wh) * GGXD(wh) * std::max(0.0f, wh.z());
     }
 
     /// Evaluate the BRDF for the given pair of directions
@@ -129,16 +135,24 @@ public:
         // cosine factor from the reflection equation, i.e.
         if (isVNDF) {
             // sample SphericalCap
+            Vector3f Vh = -bRec.wi;
+            Vh.z() *= -1;
+
             float phi = 2.0f * M_PI * _sample.y();
-            float z = (1.0f - _sample.x()) * (1.0f + bRec.wi.z()) - bRec.wi.z();
+            float z = (1.0f - _sample.x()) * (1.0f + Vh.z()) - Vh.z();
             float sinTheta = sqrt(clamp(1.0f - z * z, 0.0f, 1.0f));
             float x = sinTheta * cos(phi);
             float y = sinTheta * sin(phi);
             Vector3f c(x, y, z);
-            bRec.wo = (c + bRec.wi).normalized();
+            bRec.wo = (c + Vh).normalized();
+            if(bRec.wo.z() * bRec.wi.z() <= 0) return Color3f(0.0f);
 
             // VNDF 2018
-            //const Vector3f& Vh = bRec.wi;
+            //const Vector3f& Vh = Vector3f(
+            //    -bRec.wi.x(),
+            //    -bRec.wi.y(),
+            //    bRec.wi.z()
+            //);
             //float lensq = Vh.x() * Vh.x() + Vh.y() * Vh.y();
             //Vector3f T1 = lensq > 0 ? Vector3f(-Vh.y(), Vh.x(), 0) / sqrt(lensq) : Vector3f(1, 0, 0);
             //Vector3f T2 = Vh.cross(T1);
@@ -149,25 +163,29 @@ public:
             //float s = 0.5 * (1.0 + Vh.z());
             //t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
             //bRec.wo = t1 * T1 + t2 * T2 + sqrt(std::max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+            
             return eval(bRec) * Frame::cosTheta(bRec.wo) / pdf(bRec);
-        }
-
-        if (Frame::cosTheta(bRec.wi) <= 0) return Color3f(0.0f);
-
-        if (_sample.x() > m_ks) {
-            Point2f sample((_sample.x() - m_ks) / (1.f - m_ks), _sample.y());
-            bRec.wo = Warp::squareToCosineHemisphere(sample);
+            //Vector3f wh = (bRec.wi + bRec.wo).normalized();
+            //return GGXG1(bRec.wo, wh) * fresnel(bRec.wi.dot(wh), m_extIOR, m_intIOR);
         }
         else {
-            Point2f sample(_sample.x() / m_ks, _sample.y());
-            Vector3f wh;
-            if(isGGX) wh = Warp::squareToGGX(sample, m_alpha);
-			else wh = Warp::squareToBeckmann(sample, m_alpha);
-			bRec.wo = 2 * wh.dot(bRec.wi) * wh - bRec.wi;
+
+            if (Frame::cosTheta(bRec.wi) <= 0) return Color3f(0.0f);
+
+            if (_sample.x() > m_ks) {
+                Point2f sample((_sample.x() - m_ks) / (1.f - m_ks), _sample.y());
+                bRec.wo = Warp::squareToCosineHemisphere(sample);
+            }
+            else {
+                Point2f sample(_sample.x() / m_ks, _sample.y());
+                Vector3f wh;
+                if (isGGX) wh = Warp::squareToGGX(sample, m_alpha);
+                else wh = Warp::squareToBeckmann(sample, m_alpha);
+                bRec.wo = 2 * wh.dot(bRec.wi) * wh - bRec.wi;
+            }
+            if (Frame::cosTheta(bRec.wo) < 0.f) return Color3f(0.0f);
+            return eval(bRec) * Frame::cosTheta(bRec.wo) / pdf(bRec);
         }
-        if (Frame::cosTheta(bRec.wo) < 0.f) return Color3f(0.0f);
-        return 1.0;
-        return eval(bRec) * Frame::cosTheta(bRec.wo) / pdf(bRec);
     }
 
     bool isDiffuse() const {
@@ -194,7 +212,7 @@ public:
         );
     }
 private:
-    bool isGGX = false;
+    bool isGGX = true;
     bool isVNDF = false;
     float m_alpha;
     float m_intIOR, m_extIOR;
