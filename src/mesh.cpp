@@ -148,7 +148,9 @@ Color3f Mesh::sample(EmitterQueryRecord& rec, Sampler* sampler) const
     Point3f v0 = m_V.col(i0), v1 = m_V.col(i1), v2 = m_V.col(i2);
 
     rec.p = alpha * v0 + beta * v1 + gamma * v2;
-    
+    rec.wo = (rec.p - rec.refp).normalized();
+
+
     Vector3f trinorm = (v1 - v0).cross(v2 - v0);
     rec.invpdf *= 0.5f * trinorm.norm();
     rec.pdf = 1 / rec.invpdf;

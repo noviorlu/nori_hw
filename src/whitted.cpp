@@ -17,15 +17,15 @@ public:
 
         const BSDF* bsdf = its.mesh->getBSDF();
         if (bsdf->isDiffuse()) {
-            EmitterQueryRecord rec(ray.o, its.p, its.shFrame.n);
+            EmitterQueryRecord lRec(ray.o, its.p, its.shFrame.n);
             if (its.mesh->isEmitter()) {
-                return its.mesh->getEmitter()->eval(rec);
+                return its.mesh->getEmitter()->eval(lRec);
             }
 
-            Color3f Li = scene->SampleLight(rec, sampler)->sample(rec, sampler);
-            if (scene->rayIntersect(rec.shadowRay)) return Color3f(0.0f);
+            Color3f Li = scene->SampleLight(lRec, sampler)->sample(lRec, sampler);
+            if (scene->rayIntersect(lRec.shadowRay)) return Color3f(0.0f);
 
-            BSDFQueryRecord bRec(its.toLocal(-rec.wi), its.shFrame.toLocal(-ray.d), ESolidAngle);
+            BSDFQueryRecord bRec(its.toLocal(lRec.wi), its.shFrame.toLocal(-ray.d), ESolidAngle);
             Color3f f = bsdf->eval(bRec);
             return Li * f;
         }

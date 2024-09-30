@@ -11,7 +11,7 @@ public:
         /* No parameters this time */
     }
 
-    Color3f Li(const Scene *scene, Sampler *sampler, const Ray3f &ray) const {
+    Color3f Li(const Scene* scene, Sampler* sampler, const Ray3f& ray) const {
         Color3f Result(0.0f), fr(0.0f), Le(0.0f);
         Color3f beta(1.0f, 1.0f, 1.0f);
         float eta = 1.0f;
@@ -28,37 +28,20 @@ public:
             // Russian Roulette
             if (depth >= 3) {
                 float q = std::min(0.99f, beta.maxCoeff() * eta * eta);
-                if (sampler->next1D() > q) break;
+                if (sampler->next1D() > q || q == 0.0f) break;
                 beta /= q;
             }
 
             if (bsdf->isDiffuse()) {
-                EmitterQueryRecord rec(r.o, its.p, its.shFrame.n);
+                EmitterQueryRecord lRec(r.o, its.p, its.shFrame.n);
                 if (its.mesh->isEmitter()) {
-                    Result += beta * its.mesh->getEmitter()->eval(rec) * isDelta;
-
-                    if (isnan(Result.x()) || isnan(Result.y()) || isnan(Result.z())) {
-						cerr << "Debug1: Result: " << Result << endl;
-					}
+                    Result += beta * its.mesh->getEmitter()->eval(lRec) * isDelta;
                 }
                 else { // direct illumination
-                    Color3f Li = scene->SampleLight(rec, sampler)->sample(rec, sampler);
-                    if (!scene->rayIntersect(rec.shadowRay)) {
-                        BSDFQueryRecord bRec(its.toLocal(-rec.wi), its.toLocal(rec.wo), ESolidAngle);
+                    Color3f Li = scene->SampleLight(lRec, sampler)->sample(lRec, sampler);
+                    if (!scene->rayIntersect(lRec.shadowRay)) {
+                        BSDFQueryRecord bRec(its.toLocal(lRec.wi), its.toLocal(lRec.wo), ESolidAngle);
                         Color3f f = bsdf->eval(bRec);
-                        //beta *= 0.5;
-                        if (isnan(f.x()) || isnan(f.y()) || isnan(f.z())) {
-							cerr << "Debug2: f: " << f << endl;
-						}
-
-                        if (isnan(Li.x()) || isnan(Li.y()) || isnan(Li.z())) {
-							cerr << "Debug2: Li: " << Li << endl;
-						}
-
-                        if (isnan(beta.x()) || isnan(beta.y()) || isnan(beta.z())) {
-							cerr << "Debug2: beta: " << beta << endl;
-                        }
-
                         Result += beta * f * Li;
                     }
                     isDelta = 0;
@@ -77,6 +60,7 @@ public:
 
         return Result;
     }
+
 
     std::string toString() const {
         return "WhittedIntegrator[]";

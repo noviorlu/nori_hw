@@ -32,8 +32,8 @@ public:
 
             // Emitter Hit
             if (its.mesh->isEmitter()) {
-                EmitterQueryRecord rec(r.o, its.p, its.shFrame.n);
-                Result += beta * its.mesh->getEmitter()->eval(rec);
+                EmitterQueryRecord lRec(r.o, its.p, its.shFrame.n);
+                Result += beta * its.mesh->getEmitter()->eval(lRec);
                 break;
             }
 

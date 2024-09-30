@@ -8,28 +8,31 @@ NORI_NAMESPACE_BEGIN
 
 struct EmitterQueryRecord {
     EmitterQueryRecord() {}
-    EmitterQueryRecord(const Vector3f& wo, const Point3f& refp, const Normal3f& refn) {
+    EmitterQueryRecord(const Point3f& viewp, const Point3f& refp, const Normal3f& refn) {
         this->refp = refp;
         this->refn = refn;
-        this->wo = wo;
+        this->viewp = viewp;
+        this->wi = (viewp - refp).normalized(); // dir from refp to viewp
     }
 
     // Info from the ray Hit point
+    Point3f viewp; // view point
     Point3f refp; // current Hit point 
     Normal3f refn; // normal at the Hit point (global)
-    Vector3f wo; // direction from the Hit point to view (local)
+    Vector3f wi; // direction from the Hit point to view (global)
 
     // Info generated during sampling emitter
     Point3f p; // sampled point on the emitter
-    Vector3f wi; // direction from  Hit point to the sampled emitter (global)
     Normal3f n; // normal at the sampled point on the emitter
+    Vector3f wo; // direction from Hit point to the sampled emitter (global)
+
     Color3f radiance;
     Ray3f shadowRay;
 
     // Geometry Term and pdf combined
     long double pdf = 1.0;
     long double invpdf = 1.0;
-    float factor = 0;
+    float factor = -1.0f;
 };
 
 class IEmitterSampler {

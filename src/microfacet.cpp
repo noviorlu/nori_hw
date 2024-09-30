@@ -134,6 +134,7 @@ public:
         // direction, the last part of this function should simply return the
         // BRDF value divided by the solid angle density and multiplied by the
         // cosine factor from the reflection equation, i.e.
+        if (Frame::cosTheta(bRec.wi) < 0) return Color3f(0.0f);
         if (isVNDF) {
             // sample SphericalCap
             Vector3f Vh = -bRec.wi;
@@ -146,8 +147,6 @@ public:
             float y = sinTheta * sin(phi);
             Vector3f c(x, y, z);
             bRec.wo = (c + Vh).normalized();
-            if(bRec.wo.z() * bRec.wi.z() <= 0) return Color3f(0.0f);
-
             // VNDF 2018
             //const Vector3f& Vh = Vector3f(
             //    -bRec.wi.x(),
@@ -164,15 +163,11 @@ public:
             //float s = 0.5 * (1.0 + Vh.z());
             //t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
             //bRec.wo = t1 * T1 + t2 * T2 + sqrt(std::max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
-            
-            return eval(bRec) * Frame::cosTheta(bRec.wo) / pdf(bRec);
+
             //Vector3f wh = (bRec.wi + bRec.wo).normalized();
             //return GGXG1(bRec.wo, wh) * fresnel(bRec.wi.dot(wh), m_extIOR, m_intIOR);
         }
         else {
-
-            if (Frame::cosTheta(bRec.wi) <= 0) return Color3f(0.0f);
-
             if (_sample.x() > m_ks) {
                 Point2f sample((_sample.x() - m_ks) / (1.f - m_ks), _sample.y());
                 bRec.wo = Warp::squareToCosineHemisphere(sample);
@@ -184,9 +179,12 @@ public:
                 else wh = Warp::squareToBeckmann(sample, m_alpha);
                 bRec.wo = 2 * wh.dot(bRec.wi) * wh - bRec.wi;
             }
-            if (Frame::cosTheta(bRec.wo) < 0.f) return Color3f(0.0f);
-            return eval(bRec) * Frame::cosTheta(bRec.wo) / pdf(bRec);
         }
+        if (Frame::cosTheta(bRec.wo) < 0.f) return Color3f(0.0f);
+
+        float pdf = this->pdf(bRec);
+        if (pdf == 0) return Color3f(0.0f);
+        else return eval(bRec) * Frame::cosTheta(bRec.wo) / pdf;
     }
 
     bool isDiffuse() const {

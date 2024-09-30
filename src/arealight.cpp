@@ -22,7 +22,7 @@ public:
 	}
 
 	Color3f eval(const EmitterQueryRecord& rec) const override {
-		if (rec.wo.dot(rec.refn) > 0) {
+		if (rec.wi.dot(rec.refn) > 0) {
 			return getRadiance();
 		}
 		else {
@@ -37,31 +37,37 @@ public:
 		}
 		m_sampler->sample(rec, sampler);
 
-		rec.wi = (rec.refp - rec.p);
-		float squareNorm = rec.wi.squaredNorm();
-		float norm = sqrt(squareNorm);
-		rec.wi /= norm;
-
-		float cosTheta = rec.n.dot(rec.wi);
-		float cosThetaRef = rec.refn.dot(-rec.wi);
+		float squareNorm = (rec.p - rec.refp).squaredNorm();
+		float cosTheta = rec.n.dot(-rec.wo);
+		float cosThetaRef = rec.refn.dot(rec.wo);
 		if (cosTheta < 0.0f || cosThetaRef < 0.0f) return Color3f(0.0f);
 
 		rec.factor = cosTheta * cosThetaRef / squareNorm;
 		rec.radiance = m_radiance;
 
-		rec.shadowRay = Ray3f(rec.refp, -rec.wi);
+		rec.shadowRay = Ray3f(rec.refp, rec.wo);
 		rec.shadowRay.mint = EPSILON;   
-		rec.shadowRay.maxt = norm - EPSILON;
+		rec.shadowRay.maxt = sqrt(squareNorm) - EPSILON;
 
 		return rec.factor * rec.invpdf * rec.radiance;
 	}
 	
 	float pdf(const EmitterQueryRecord& rec) const override {
-		float cosTheta = rec.n.dot(-rec.wi);
-		if (cosTheta > 0.f) {
-			return (rec.p - rec.refp).squaredNorm() / cosTheta;
+		if (rec.factor == -1.0f) {
+			// hit Emitter, current hitpoint is Emitter thus
+			float cosTheta = rec.refn.dot(rec.wi);
+			if (cosTheta > 0.0f) {
+				return (rec.viewp - rec.refp).squaredNorm() / cosTheta;
+			}
 		}
-		return 0.f;
+		else {
+			float cosTheta = rec.n.dot(-rec.wo);
+			if (cosTheta > 0.0f) {
+				return (rec.p - rec.refp).squaredNorm() / cosTheta;
+			}
+		}
+		
+		return 0.0f;
 	}
 
 	std::string toString() const override {
