@@ -17,7 +17,7 @@ public:
 
         const BSDF* bsdf = its.mesh->getBSDF();
         if (bsdf->isDiffuse()) {
-            EmitterQueryRecord rec(its.toLocal(-ray.d), its.p, its.shFrame.n);
+            EmitterQueryRecord rec(ray.o, its.p, its.shFrame.n);
             if (its.mesh->isEmitter()) {
                 return its.mesh->getEmitter()->eval(rec);
             }

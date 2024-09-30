@@ -60,7 +60,7 @@ public:
     }
 
     float BeckmannMicrofacet(const Vector3f& wi, const Vector3f& wo) const {
-		Vector3f wh = (wi + wo).normalized();
+        Vector3f wh = (wi + wo).normalized();
         float f = fresnel(wi.dot(wh), m_extIOR, m_intIOR);
         float d = BeckmannD(wh);
         float g = BeckmannG1(wi, wh) * BeckmannG1(wo, wh);
@@ -103,6 +103,7 @@ public:
 
     /// Evaluate the BRDF for the given pair of directions
     Color3f eval(const BSDFQueryRecord &bRec) const {
+        if (Frame::cosTheta(bRec.wi) <= 0 || Frame::cosTheta(bRec.wo) <= 0) return 0.0f;
         if(isGGX) return m_kd * INV_PI + m_ks * GGXMicrofacet(bRec.wi, bRec.wo);
         else return m_kd * INV_PI + m_ks * BeckmannMicrofacet(bRec.wi, bRec.wo);
     }

@@ -22,7 +22,7 @@ public:
 	}
 
 	Color3f eval(const EmitterQueryRecord& rec) const override {
-		if (rec.wo.z() > 0) {
+		if (rec.wo.dot(rec.refn) > 0) {
 			return getRadiance();
 		}
 		else {
@@ -57,8 +57,11 @@ public:
 	}
 	
 	float pdf(const EmitterQueryRecord& rec) const override {
-		return m_sampler->pdf(rec);
-		return rec.pdf;
+		float cosTheta = rec.n.dot(-rec.wi);
+		if (cosTheta > 0.f) {
+			return (rec.p - rec.refp).squaredNorm() / cosTheta;
+		}
+		return 0.f;
 	}
 
 	std::string toString() const override {

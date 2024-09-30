@@ -33,24 +33,33 @@ public:
             }
 
             if (bsdf->isDiffuse()) {
-                EmitterQueryRecord rec(its.toLocal(-r.d), its.p, its.shFrame.n);
+                EmitterQueryRecord rec(r.o, its.p, its.shFrame.n);
                 if (its.mesh->isEmitter()) {
                     Result += beta * its.mesh->getEmitter()->eval(rec) * isDelta;
+
+                    if (isnan(Result.x()) || isnan(Result.y()) || isnan(Result.z())) {
+						cerr << "Debug1: Result: " << Result << endl;
+					}
                 }
                 else { // direct illumination
-                    Vector3f wo = its.toLocal(-r.d);
-                    EmitterQueryRecord rec(wo, its.p, its.shFrame.n);
-
                     Color3f Li = scene->SampleLight(rec, sampler)->sample(rec, sampler);
                     if (!scene->rayIntersect(rec.shadowRay)) {
-                        BSDFQueryRecord bRec(its.toLocal(-rec.wi), wo, ESolidAngle);
+                        BSDFQueryRecord bRec(its.toLocal(-rec.wi), its.toLocal(rec.wo), ESolidAngle);
                         Color3f f = bsdf->eval(bRec);
                         //beta *= 0.5;
-                        Result += beta * f * Li;
+                        if (isnan(f.x()) || isnan(f.y()) || isnan(f.z())) {
+							cerr << "Debug2: f: " << f << endl;
+						}
 
-                        if (abs(scene->getPDF() - rec.pdf) > 0.0001f) {
-                            cerr << "pdf mismatch: " << scene->getPDF() << " " << rec.pdf << endl;
+                        if (isnan(Li.x()) || isnan(Li.y()) || isnan(Li.z())) {
+							cerr << "Debug2: Li: " << Li << endl;
+						}
+
+                        if (isnan(beta.x()) || isnan(beta.y()) || isnan(beta.z())) {
+							cerr << "Debug2: beta: " << beta << endl;
                         }
+
+                        Result += beta * f * Li;
                     }
                     isDelta = 0;
                 }

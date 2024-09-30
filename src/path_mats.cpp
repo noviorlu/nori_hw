@@ -32,7 +32,7 @@ public:
 
             // Emitter Hit
             if (its.mesh->isEmitter()) {
-                EmitterQueryRecord rec(its.toLocal(-r.d), its.p, its.shFrame.n);
+                EmitterQueryRecord rec(r.o, its.p, its.shFrame.n);
                 Result += beta * its.mesh->getEmitter()->eval(rec);
                 break;
             }
