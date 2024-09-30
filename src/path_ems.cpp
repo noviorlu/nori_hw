@@ -47,6 +47,10 @@ public:
                         Color3f f = bsdf->eval(bRec);
                         //beta *= 0.5;
                         Result += beta * f * Li;
+
+                        if (abs(scene->getPDF() - rec.pdf) > 0.0001f) {
+                            cerr << "pdf mismatch: " << scene->getPDF() << " " << rec.pdf << endl;
+                        }
                     }
                     isDelta = 0;
                 }

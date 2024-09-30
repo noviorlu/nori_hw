@@ -48,7 +48,6 @@ public:
 
 		rec.factor = cosTheta * cosThetaRef / squareNorm;
 		rec.radiance = m_radiance;
-		rec.pdf = m_sampler->pdf(rec);
 
 		rec.shadowRay = Ray3f(rec.refp, -rec.wi);
 		rec.shadowRay.mint = EPSILON;   
@@ -58,7 +57,8 @@ public:
 	}
 	
 	float pdf(const EmitterQueryRecord& rec) const override {
-		return 0;
+		return m_sampler->pdf(rec);
+		return rec.pdf;
 	}
 
 	std::string toString() const override {

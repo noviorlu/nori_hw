@@ -189,6 +189,7 @@ protected:
     Emitter    *m_emitter = nullptr;     ///< Associated emitter, if any
     BoundingBox3f m_bbox;                ///< Bounding box of the mesh
     DiscretePDF m_dpdf;                  ///< Discrete PDF for sampling triangles
+    float prerecordPdf;
 };
 
 NORI_NAMESPACE_END
