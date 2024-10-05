@@ -22,49 +22,52 @@ public:
         float w_bsdf = 1.0f;
 
         if (!scene->rayIntersect(r, its)) return Result;
-        for (int depth = 0; depth < 100; depth++) {
-            // emitted
-            EmitterQueryRecord lRec(r.o, its.p, its.shFrame.n);
-            if (its.mesh->isEmitter()) {
-                Result += beta * w_bsdf * its.mesh->getEmitter()->eval(lRec);
-            }
+        // emitted
+        EmitterQueryRecord lRec(r.o, its.p, its.shFrame.n);
+        if (its.mesh->isEmitter()) {
+            Result += beta * w_bsdf * its.mesh->getEmitter()->eval(lRec);
+        }
+        for (int depth = 0; depth < 10; depth++) {
+            float pdf_mat = 0.0f, pdf_em = 0.0f;
+            Color3f MC_em = Color3f(0.0f), MC_bsdf = Color3f(0.0f);
 
             const Emitter* light = scene->SampleLight(lRec, sampler);
             Color3f Li = light->sample(lRec, sampler);
-            float pdf_em = scene->getPDF() * light->pdf(lRec);
+            pdf_em = light->pdf(lRec);
             if (!scene->rayIntersect(lRec.shadowRay)) {
-                float cosTheta = std::max(0.f, Frame::cosTheta(its.shFrame.toLocal(lRec.wi)));
-
                 BSDFQueryRecord bRec(its.toLocal(-r.d), its.toLocal(lRec.wi), ESolidAngle);
                 Color3f f = its.mesh->getBSDF()->eval(bRec);
-                float pdf_mat = its.mesh->getBSDF()->pdf(bRec);
 
-                float w_ems = pdf_mat + pdf_em > 0.f ? pdf_em / (pdf_mat + pdf_em) : pdf_em;
-
-                Result += Li * f * w_ems * beta;
+                MC_em = Li * f;
             }
-            if (depth >= 3) {
-                float q = std::min(0.99f, beta.maxCoeff() * eta * eta);
-                if (sampler->next1D() > q || q == 0.0f) break;
-                beta /= q;
-            }
+            //if (depth >= 3) {
+            //    float q = std::min(0.99f, beta.maxCoeff() * eta * eta);
+            //    if (sampler->next1D() > q || q == 0.0f) break;
+            //    beta /= q;
+            //}
 
             //BSDF
             BSDFQueryRecord bRec(its.shFrame.toLocal(-r.d));
             Color3f f = its.mesh->getBSDF()->sample(bRec, sampler->next2D());
-            float pdf_mat = its.mesh->getBSDF()->pdf(bRec);
-
-            eta *= bRec.eta;
-            beta *= f;
+            pdf_mat = its.mesh->getBSDF()->pdf(bRec);
 
             r = Ray3f(its.p, its.toWorld(bRec.wo));
             if (!scene->rayIntersect(r, its)) break;
 
+            pdf_mat *= its.shFrame.n.dot(-r.d) / (its.p - r.o).squaredNorm();
+            if (pdf_mat < 0) pdf_mat = 0.0f;
             if (its.mesh->isEmitter()) {
                 EmitterQueryRecord lRec = EmitterQueryRecord(r.o, its.p, its.shFrame.n);
-                float pdf_em = scene->getPDF() * its.mesh->getEmitter()->pdf(lRec);
-                w_bsdf = pdf_mat + pdf_em > 0.f ? pdf_mat / (pdf_mat + pdf_em) : pdf_mat;
+                MC_bsdf = f * its.mesh->getEmitter()->eval(lRec);
             }
+
+            if(pdf_em + pdf_mat == 0.0f) break;
+            float w_em = pdf_em / (pdf_em + pdf_mat);
+            float w_bsdf = pdf_mat / (pdf_em + pdf_mat);
+            Result += beta * (w_bsdf * MC_bsdf + w_em * MC_em);
+
+            eta *= bRec.eta;
+            beta *= f;
         }
 
         return Result;
