@@ -22,12 +22,17 @@ public:
 	}
 
 	Color3f eval(const EmitterQueryRecord& rec) const override {
-		if (rec.wi.dot(rec.refn) > 0) {
-			return getRadiance();
+		if (rec.factor == -1.0f) { // not samples
+			if (rec.refn.dot(rec.wi) > 0) {
+				return getRadiance();
+			}
 		}
-		else {
-			return Color3f(0.0f);
+		else { // from light sampling
+			if (rec.refn.dot(rec.wo) > 0 && rec.n.dot(-rec.wo)) {
+				return getRadiance();
+			}
 		}
+		return Color3f(0.0f);
 	}
 
 	Color3f sample(EmitterQueryRecord &rec, Sampler* sampler) const override{
@@ -35,6 +40,8 @@ public:
 			cout << "AreaLight::sample: m_sampler is nullptr" << endl;
 			return Color3f(0.0f);
 		}
+		rec.pdf = 1.0f;
+		rec.invpdf = 1.0f;
 		m_sampler->sample(rec, sampler);
 
 		float squareNorm = (rec.p - rec.refp).squaredNorm();
@@ -49,25 +56,15 @@ public:
 		rec.shadowRay.mint = EPSILON;   
 		rec.shadowRay.maxt = sqrt(squareNorm) - EPSILON;
 
-		return rec.factor * rec.invpdf * rec.radiance;
+		rec.pdf = m_sampler->pdf(rec);
+		rec.invpdf = m_sampler->sum(rec);
+
+		return rec.factor* rec.radiance * rec.invpdf;
 	}
 	
 	float pdf(const EmitterQueryRecord& rec) const override {
-		if (rec.factor == -1.0f) {
-			// hit Emitter, current hitpoint is Emitter thus
-			float cosTheta = rec.refn.dot(rec.wi);
-			if (cosTheta > 0.0f) {
-				return (rec.viewp - rec.refp).squaredNorm() / cosTheta;
-			}
-		}
-		else {
-			float cosTheta = rec.n.dot(-rec.wo);
-			if (cosTheta > 0.0f) {
-				return (rec.p - rec.refp).squaredNorm() / cosTheta;
-			}
-		}
-		
-		return 0.0f;
+		if (rec.factor == -1.0f) return 0.0f;
+		else return m_sampler->pdf(rec);
 	}
 
 	std::string toString() const override {

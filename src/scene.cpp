@@ -113,11 +113,14 @@ void Scene::addChild(NoriObject *obj) {
 
 Emitter* Scene::SampleLight(EmitterQueryRecord& rec, Sampler* sampler) const
 {
-    float pdflight;
-    int idx = m_dpdf.sample(sampler->next1D(), pdflight);
-    rec.invpdf /= pdflight;
+    //float pdflight;
+    //int idx = m_dpdf.sample(sampler->next1D(), pdflight);
+    //rec.invpdf /= pdflight;
 
-    return m_lights[idx];
+    //return m_lights[idx];
+
+    float eta = sampler->next1D() * m_lights.size();
+    return m_lights[(int)eta];
 }
 
 std::string Scene::toString() const {

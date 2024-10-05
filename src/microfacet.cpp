@@ -211,7 +211,7 @@ public:
         );
     }
 private:
-    bool isGGX = true;
+    bool isGGX = false;
     bool isVNDF = false;
     float m_alpha;
     float m_intIOR, m_extIOR;
