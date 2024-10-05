@@ -115,6 +115,7 @@ Emitter* Scene::SampleLight(EmitterQueryRecord& rec, Sampler* sampler) const
 {
     rec.invpdf = m_lights.size();
     return m_lights[(int)(sampler->next1D() * m_lights.size())];
+
     //float pdflight;
     //int idx = m_dpdf.sample(sampler->next1D(), pdflight);
     //rec.invpdf /= pdflight;

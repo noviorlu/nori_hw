@@ -15,6 +15,20 @@ struct EmitterQueryRecord {
         this->wi = (viewp - refp).normalized(); // dir from refp to viewp
     }
 
+    EmitterQueryRecord(
+        const Point3f& viewp, 
+        const Point3f& refp, const Normal3f& refn, 
+        const Point3f& p, const Normal3f& n
+    ) {
+        this->refp = refp;
+		this->refn = refn;
+		this->viewp = viewp;
+		this->wi = (viewp - refp).normalized(); // dir from refp to viewp
+		this->p = p;
+		this->n = n;
+		this->wo = (p - refp).normalized(); // dir from refp to p
+    }
+
     // Info from the ray Hit point
     Point3f viewp; // view point
     Point3f refp; // current Hit point 
@@ -30,8 +44,8 @@ struct EmitterQueryRecord {
     Ray3f shadowRay;
 
     // Geometry Term and pdf combined
-    long double pdf = 1.0;
-    long double invpdf = 1.0;
+    long double pdf;
+    long double invpdf;
     float factor = -1.0f;
 };
 
