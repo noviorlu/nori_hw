@@ -22,10 +22,11 @@ public:
         
         // Self Emission, first hit light
         if (!scene->rayIntersect(r, its)) return Result;
+
         if (its.mesh->isEmitter()) {
-			EmitterQueryRecord lRec(r.o, its.p, its.shFrame.n);
-			Result += its.mesh->getEmitter()->eval(lRec);
-		}
+			    EmitterQueryRecord lRec(r.o, its.p, its.shFrame.n);
+			    Result += its.mesh->getEmitter()->eval(lRec);
+		    }
 
         bool stopFlag = false;
         for (int depth = 0; depth < 10 && !stopFlag; depth++) {
@@ -96,7 +97,6 @@ public:
                 float q = std::min(0.99f, beta.maxCoeff() * eta * eta);
                 if (sampler->next1D() > q || q == 0.0f) break;
                 beta /= (1 - q);
-            }
         }
         return Result;
     }
