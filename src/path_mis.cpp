@@ -29,7 +29,7 @@ public:
 
         bool stopFlag = false;
         for (int depth = 0; depth < 10 && !stopFlag; depth++) {
-            double w_bsdf = 1.0f, w_emitter = 1.0f;
+            double w_bsdf = 0.0f, w_emitter = 0.0f;
             double pdf_bsdf = 0.0f, pdf_emitter = 0.0f;
 
             Color3f MC_emitter(0.0f), MC_bsdf(0.0f);
@@ -44,12 +44,16 @@ public:
                 if (!scene->rayIntersect(lRec.shadowRay)) {
                     BSDFQueryRecord bRec(its.toLocal(lRec.wi), its.toLocal(lRec.wo), ESolidAngle);
                     Color3f f = its.mesh->getBSDF()->eval(bRec);
-
-                    MC_emitter *= f * scene->m_lights.size();
-
+                    pdf_bsdf = its.mesh->getBSDF()->pdf(bRec);
+                    
                     // divide by the scene pdf
-                    pdf_emitter = lRec.pdf / scene->m_lights.size(); // in 1/dA
+                    pdf_emitter = lRec.pdf; // in 1/dA
                     pdf_emitter *= (lRec.p - lRec.refp).squaredNorm() / lRec.n.dot(-lRec.wo); // from Area to solidAngle
+
+                    if(pdf_bsdf + pdf_emitter != 0.0f)
+                        w_emitter = pdf_emitter / (pdf_bsdf + pdf_emitter);
+
+                    MC_emitter *= f * w_emitter;
                 }
                 else {
                     MC_emitter = Color3f(0.0f);
@@ -72,33 +76,28 @@ public:
                 if (!stopFlag && its.mesh->isEmitter()) {
                     EmitterQueryRecord lRec(r.o, its.p, its.shFrame.n);
                     Color3f Li = its.mesh->getEmitter()->eval(lRec); // if not backface return radiance
-                    MC_bsdf = Li * deltaB; // Le * G / pdf
-                
-                    //if(Li.maxCoeff() == 0.0f) pdf_bsdf = 0.0f;
-                    //else pdf_bsdf *= its.shFrame.n.dot(-r.d.normalized()) / (r.o - its.p).squaredNorm(); // from Area to solidAngle
+                    pdf_emitter = its.mesh->pdf(lRec) / scene->m_lights.size(); // in 1/dA
+                    pdf_emitter *= (its.p - r.o).squaredNorm() / its.shFrame.n.dot(-r.d); // from Area to solidAngle
+
+                    if(pdf_bsdf + pdf_emitter != 0.0f)
+						w_bsdf = pdf_bsdf / (pdf_bsdf + pdf_emitter);
+
+                    MC_bsdf = Li * deltaB * w_bsdf; // Le * G / pdf
+
                 }
             }
-
-            // Balance Huristic
-            if (pdf_emitter + pdf_bsdf != 0.0f) {
-                //Result += beta * MC_bsdf;
-                //Result += beta * MC_emitter;
-                w_bsdf = pdf_bsdf / (pdf_bsdf + pdf_emitter);
-                w_emitter = pdf_emitter / (pdf_bsdf + pdf_emitter);
-                Result += beta * (w_bsdf * MC_bsdf + w_emitter * MC_emitter);
-            }
+            Result += beta * (MC_bsdf + MC_emitter);
             
             beta *= deltaB;
             eta *= deltaEta;
             // ray already updated in BSDF Sampling so no need update here
             // goes into the next iteration
-            //if (depth >= 3) {
-            //    float q = std::min(0.99f, beta.maxCoeff() * eta * eta);
-            //    if (sampler->next1D() > q || q == 0.0f) break;
-            //    beta /= (1 - q);
-            //}
+            if (depth > 3) {
+                float q = std::min(0.99f, beta.maxCoeff() * eta * eta);
+                if (sampler->next1D() > q || q == 0.0f) break;
+                beta /= (1 - q);
+            }
         }
-
         return Result;
     }
 

@@ -40,8 +40,6 @@ public:
 			cout << "AreaLight::sample: m_sampler is nullptr" << endl;
 			return Color3f(0.0f);
 		}
-		rec.pdf = 1.0f;
-		rec.invpdf = 1.0f;
 		m_sampler->sample(rec, sampler);
 
 		float squareNorm = (rec.p - rec.refp).squaredNorm();
@@ -55,9 +53,6 @@ public:
 		rec.shadowRay = Ray3f(rec.refp, rec.wo);
 		rec.shadowRay.mint = EPSILON;   
 		rec.shadowRay.maxt = sqrt(squareNorm) - EPSILON;
-
-		rec.pdf = m_sampler->pdf(rec);
-		rec.invpdf = m_sampler->sum(rec);
 
 		return rec.factor* rec.radiance * rec.invpdf;
 	}

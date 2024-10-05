@@ -118,9 +118,8 @@ Emitter* Scene::SampleLight(EmitterQueryRecord& rec, Sampler* sampler) const
     //rec.invpdf /= pdflight;
 
     //return m_lights[idx];
-
-    float eta = sampler->next1D() * m_lights.size();
-    return m_lights[(int)eta];
+    rec.invpdf = m_lights.size();
+    return m_lights[(int)(sampler->next1D() * m_lights.size())];
 }
 
 std::string Scene::toString() const {
